@@ -40,3 +40,5 @@ alias scilab='cd /opt/scilab; ./bin/scilab'
 #Redis:
 alias start-redis='redis-server'
 
+# PHPUnit
+alias phpunit='./vendor/bin/phpunit'
