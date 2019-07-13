@@ -1,0 +1,2 @@
+#VPN aliases:
+alias vpn-uepg='sudo openvpn --config /etc/openvpn/uepg.ovpn --auth-user-pass /etc/openvpn/auth.conf'

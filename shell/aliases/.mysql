@@ -1,0 +1,4 @@
+# Mysql aliases:
+alias start-mysql='sudo service mysql start'
+alias stop-mysql='sudo service mysql stop'
+alias restart-mysql='sudo service mysql restart'

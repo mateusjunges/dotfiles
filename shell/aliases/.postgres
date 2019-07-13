@@ -1,0 +1,7 @@
+# Postgresql aliases:
+
+alias start-pgsql='sudo service postgresql start'
+alias stop-pgsql='sudo service postgresql stop'
+alias restart-pgsql='sudo service postgresql restart'
+alias pgadmin4='. ~/Programs/pgAdmin4/pgAdmin4/bin/activate; python ~/Programs/pgAdmin4/pgAdmin4/lib/python2.7/site-packages/pgadmin4/pgAdmin4.py'
+

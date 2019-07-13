@@ -1,0 +1,6 @@
+# Composer aliases:
+
+#Composer aliases:
+alias new-laravel='composer create-project --prefer-dist laravel/laravel'
+alias dump-autoload='composer dump-autoload'
+alias cr='composer require'
