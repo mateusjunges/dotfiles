@@ -1,0 +1,12 @@
+# Commit
+function commit() {
+    message="$1"
+
+    if [ "$message" = "" ]; then
+        message="wip"
+    fi
+
+    git add .
+    eval "git commit -a -m '${message}'"
+}
+
