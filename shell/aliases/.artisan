@@ -1,5 +1,0 @@
-#PHP artisan aliases:
-alias pas='php artisan serve --host=junges'
-alias pa='php artisan'
-alias controller='php artisan make:controller'
-alias model='php artisan make:model'

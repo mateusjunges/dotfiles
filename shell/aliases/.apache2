@@ -1,4 +1,0 @@
-# Apache 2 aliases
-alias start-apache2='sudo service apache2 start'
-alias stop-apache2='sudo service apache2 stop'
-alias restart-apache2='sudo service apache2 restart'
