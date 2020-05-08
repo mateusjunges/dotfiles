@@ -42,9 +42,3 @@ fi
 if [ -f ~/.redis ]; then
     . ~/.redis
 fi
-
-# VPN UEPG:
-if [ -f ~/.redis ]; then
-    . ~/.redis
-fi
-
