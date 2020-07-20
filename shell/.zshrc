@@ -101,3 +101,7 @@ if [ -f ~/.zsh_aliases ]; then
 fi
 
 
+# Register functions
+if [ -f ~/.zsh_functions ]; then
+    . ~/.zsh_functions
+fi 
