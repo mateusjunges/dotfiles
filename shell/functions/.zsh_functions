@@ -10,3 +10,13 @@ function commit() {
     eval "git commit -a -m '${message}'"
 }
 
+# Push
+function push() {
+    branch="$1"
+
+    if [ "$branch" = "" ]; then
+        branch="master"
+    fi
+
+    eval "git push origin ${branch}" 
+}
