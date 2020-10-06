@@ -27,3 +27,4 @@ ln -s $HOME/.dotfiles/shell/.zsh_functions $HOME/.zsh_functions
 # Configure git
 git config --global user.name "Mateus Junges"
 git config --global user.email "mateus@junges.dev"
+echo "sign commits: https://help.github.com/en/github/authenticating-to-github/associating-an-email-with-your-gpg-key"
