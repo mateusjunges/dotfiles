@@ -23,3 +23,7 @@ ln -s $HOME/.dotfiles/shell/.zsh_aliases $HOME/.zsh_aliases
 # Symlink functions
 rm $HOME/.zsh_functions
 ln -s $HOME/.dotfiles/shell/.zsh_functions $HOME/.zsh_functions
+
+# Configure git
+git config --global user.name "Mateus Junges"
+git config --global user.email "mateus@junges.dev"
