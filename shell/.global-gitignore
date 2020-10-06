@@ -1,0 +1,21 @@
+# Vim swap files
+.*.sw?
+
+# PhpStorm
+.idea
+
+# vs code
+.vscode
+
+# Sublime Text
+*.sublime-project
+
+# Node
+node_modules
+npm-debug.log
+yarn-error.log
+.phpunit-watcher-cache.php
+.phpunit.result.cache
+
+# Python
+__pycache__
