@@ -19,12 +19,11 @@
     <select />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="1bcdee7d-1c7c-44c1-b4d5-7fee12c18a2d" name="Default Changelist" comment="">
-      <change afterPath="$PROJECT_DIR$/shell/.zsh_functions" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/shell/.bashrc" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/shell/aliases/.zsh_aliases" beforeDir="false" afterPath="$PROJECT_DIR$/shell/.zsh_aliases" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/shell/functions/.functions" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/shell/functions/.zsh_functions" beforeDir="false" />
+    <list default="true" id="95535853-e39d-4b56-a0b2-05c5fb902dbe" name="Default Changelist" comment="">
+      <change beforePath="$PROJECT_DIR$/.idea/modules.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/modules.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/README.md" beforeDir="false" afterPath="$PROJECT_DIR$/README.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/installscript.sh" beforeDir="false" afterPath="$PROJECT_DIR$/installscript" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -37,7 +36,7 @@
   <component name="Git.Settings">
     <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
   </component>
-  <component name="ProjectId" id="1iVQcegRI2vbdF93koQlsh5xwoo" />
+  <component name="ProjectId" id="1iVVPFxiOch5Oa0L0cZyjbW4YaH" />
   <component name="ProjectViewState">
     <option name="hideEmptyMiddlePackages" value="true" />
     <option name="showLibraryContents" value="true" />
@@ -49,20 +48,15 @@
     <property name="nodejs_package_manager_path" value="npm" />
     <property name="vue.rearranger.settings.migration" value="true" />
   </component>
-  <component name="RecentsManager">
-    <key name="MoveFile.RECENT_KEYS">
-      <recent name="$PROJECT_DIR$/shell" />
-    </key>
-  </component>
   <component name="SpellCheckerSettings" RuntimeDictionaries="0" Folders="0" CustomDictionaries="0" DefaultDictionary="application-level" UseSingleDictionary="true" transferred="true" />
   <component name="TaskManager">
     <task active="true" id="Default" summary="Default task">
-      <changelist id="1bcdee7d-1c7c-44c1-b4d5-7fee12c18a2d" name="Default Changelist" comment="" />
-      <created>1601990359850</created>
+      <changelist id="95535853-e39d-4b56-a0b2-05c5fb902dbe" name="Default Changelist" comment="" />
+      <created>1601992719444</created>
       <option name="number" value="Default" />
       <option name="presentableId" value="Default" />
-      <updated>1601990359850</updated>
-      <workItem from="1601990360890" duration="1964000" />
+      <updated>1601992719444</updated>
+      <workItem from="1601992720480" duration="648000" />
     </task>
     <servers />
   </component>
@@ -81,9 +75,9 @@
     </option>
   </component>
   <component name="WindowStateProjectService">
-    <state x="2602" y="355" width="645" height="403" key="#com.intellij.fileTypes.FileTypeChooser" timestamp="1601991638043">
+    <state x="2608" y="355" width="599" height="403" key="#com.intellij.fileTypes.FileTypeChooser" timestamp="1601993091002">
       <screen x="1920" y="0" width="1920" height="1080" />
     </state>
-    <state x="2602" y="355" width="645" height="403" key="#com.intellij.fileTypes.FileTypeChooser/1920.0.1920.1080/66.26.1854.1054@1920.0.1920.1080" timestamp="1601991638043" />
+    <state x="2608" y="355" width="599" height="403" key="#com.intellij.fileTypes.FileTypeChooser/1920.0.1920.1080/66.26.1854.1054@1920.0.1920.1080" timestamp="1601993091002" />
   </component>
 </project>
