@@ -7,7 +7,7 @@ function commit() {
     fi
 
     git add .
-    eval "git commit -a -m '${message}'"
+    eval "git commit -S -a -m '${message}'"
 }
 
 # Push
