@@ -21,6 +21,17 @@ function push() {
     eval "git push origin ${branch}" 
 }
 
+# Pull
+function pull() {
+    branch="$1"
+ 
+    if [ "$branch" = "" ]; then
+        branch="master"
+    fi
+
+    eval "git pull origin ${branch}"
+}
+
 # Start an HTTP Server from a directory, optionally specifying the port
 function server() {
     local port="${1:-9000}"
