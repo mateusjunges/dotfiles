@@ -105,3 +105,6 @@ fi
 if [ -f ~/.zsh_functions ]; then
     . ~/.zsh_functions
 fi 
+
+
+export PATH=$HOME/.config/composer/vendor/bin:$PATH
