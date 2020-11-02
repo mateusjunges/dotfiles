@@ -2,6 +2,8 @@
 # You may want to put all your additions into a separete file like
 # ~/.aliases, instead of adding them directly.
 
+alias reloadcli='soruce $HOME/.zshrc'
+
 # Apache 2 aliases
 alias start-apache2='sudo service apache2 start'
 alias stop-apache2='sudo service apache2 stop'
