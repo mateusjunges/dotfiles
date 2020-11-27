@@ -6,25 +6,37 @@ curl -L https://raw.githubusercontent.com/robbyrussell/oh-my-zsh/master/tools/in
 
 # Add a global gitignore
 
+echo 'Adding a global gitignore file...'
 git config --global core.excludesfile $HOME/.global-gitignore
+echo '-----------------'
 
 # Symlink zsh config
+echo 'Symlinking zsh config...'
 rm $HOME/.zshrc
 ln -s $HOME/.dotfiles/shell/.zshrc $HOME/.zshrc
+echo '-----------------'
 
 # Symlink vim prefs
+echo 'Symlinking vim prefs...'
 rm $HOME/.vimrc
 ln -s $HOME/.dotfiles/shell/.vimrc $HOME/.vimrc
+echo '-----------------'
 
 # Symlink aliases file
+echo 'Symlinking aliases...'
 rm $HOME/.zsh_aliases
 ln -s $HOME/.dotfiles/shell/.zsh_aliases $HOME/.zsh_aliases
+echo '-----------------'
 
 # Symlink functions
+echo 'Symlinkin zsh functions...'
 rm $HOME/.zsh_functions
 ln -s $HOME/.dotfiles/shell/.zsh_functions $HOME/.zsh_functions
+echo '-----------------'
 
 # Configure git
+echo 'Configuring git...'
 git config --global user.name "Mateus Junges"
 git config --global user.email "mateus@junges.dev"
+echo '-----------------'
 echo "sign commits: https://help.github.com/en/github/authenticating-to-github/associating-an-email-with-your-gpg-key"
