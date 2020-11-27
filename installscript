@@ -40,3 +40,6 @@ git config --global user.name "Mateus Junges"
 git config --global user.email "mateus@junges.dev"
 echo '-----------------'
 echo "sign commits: https://help.github.com/en/github/authenticating-to-github/associating-an-email-with-your-gpg-key"
+
+
+echo 'Installation finished successfully!'
