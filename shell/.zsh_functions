@@ -62,3 +62,14 @@ function db {
         mysql -uroot -e "drop database $2"
     fi
 }
+
+
+function weather() {
+    city="$1"
+
+    if [ -z "$city" ]; then
+        city="Ponta%20Grossa%20PR"
+    fi
+
+    eval "curl http://wttr.in/${city}"
+}
