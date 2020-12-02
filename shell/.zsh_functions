@@ -30,7 +30,7 @@ function pull() {
     branch="$1"
  
     if [ "$branch" = "" ]; then
-        branch="master"
+        branch=$(get_current_branch)
     fi
 
     eval "git pull origin ${branch}"
