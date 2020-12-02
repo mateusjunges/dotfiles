@@ -9,12 +9,17 @@ function commit() {
     eval "git commit -S -m '${message}'"
 }
 
+# Returns the current git branch
+function get_current_branch() {
+    git branch --show-current
+}
+
 # Push
 function push() {
     branch="$1"
 
     if [ "$branch" = "" ]; then
-        branch="master"
+        branch=$(get_current_branch)
     fi
 
     eval "git push origin ${branch}" 
