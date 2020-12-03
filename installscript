@@ -4,6 +4,12 @@ echo '-----------------'
 rm -rf $HOME/.oh-my-zsh/
 curl -L https://raw.githubusercontent.com/robbyrussell/oh-my-zsh/master/tools/install.sh | sh
 
+# Install ZSH plugins:
+echo 'Installing shell plugins...'
+git clone https://github.com/zsh-users/zsh-syntax-highlighting ${ZSH_CUSTOM:-~/.oh-my-zsh/custom}/plugins/zsh-syntax-highlighting
+git clone https://github.com/zsh-users/zsh-autosuggestions ${ZSH_CUSTOM:-~/.oh-my-zsh/custom}/plugins/zsh-autosuggestions
+
+
 # Add a global gitignore
 
 echo 'Adding a global gitignore file...'
