@@ -56,6 +56,11 @@ function server() {
     	python -c $'import SimpleHTTPServer;\nmap = SimpleHTTPServer.SimpleHTTPRequestHandler.extensions_map;\nmap[""] = "text/plain";\nfor key, value in map.items():\n\tmap[key] = value + ";charset=UTF-8";\nSimpleHTTPServer.test();' "$port"
 }
 
+# Switch php version
+function switchPHP() {
+    sudo update-alternatives --config php
+}
+
 # Start a php server from a directory, optionally specifying the port
 function phpserver() {
     local port="${1:-4000}"
