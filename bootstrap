@@ -5,8 +5,9 @@ function bootstrapTerminal() {
 
 echo 'Bootstrap terminal'
 echo '------------------'
+
 echo 'This will reset your terminal. Are you sure you want to do this? (y/N) '
-read -p 'Answer: ' reply
+read reply
 
 if [[ $reply =~ ^[Yy]$ ]]
 then
