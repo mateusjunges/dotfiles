@@ -8,7 +8,7 @@ echo '------------------'
 echo 'This will reset your terminal. Are you sure you want to do this? (y/N) '
 read -p 'Answer: ' reply
 
-if [[$reply =~ ^[Yy]$ ]]
+if [[ $reply =~ ^[Yy]$ ]]
 then
     bootstrapTerminal
 fi
