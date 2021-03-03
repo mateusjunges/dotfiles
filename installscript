@@ -2,10 +2,9 @@ echo 'Install oh-my-zsh'
 echo '-----------------'
 
 rm -rf $HOME/.oh-my-zsh/
-curl -L https://raw.githubusercontent.com/robbyrussell/oh-my-zsh/master/tools/install.sh | sh
+sh -c "$(curl -fsSL https://raw.github.com/ohmyzsh/ohmyzsh/master/tools/install.sh)"
 
 # Add a global gitignore
-
 echo 'Adding a global gitignore file...'
 git config --global core.excludesfile $HOME/.global-gitignore
 echo '-----------------'
