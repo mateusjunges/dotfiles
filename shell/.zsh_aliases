@@ -39,5 +39,5 @@ alias pgadmin4='. ~/Programs/pgAdmin4/pgAdmin4/bin/activate; python ~/Programs/p
 alias start-redis='redis-server'
 
 # Tinkerwell
-alias tinkerwell='cd ~/apps/; ./Tinkerwell-2.11.0.AppImage'
+alias tinkerwell='cd ~/apps/; ./Tinkerwell-2.12.1.AppImage'
 
