@@ -89,3 +89,11 @@ function weather() {
 
     eval "curl http://wttr.in/${city}"
 }
+
+function ray() {
+    cd ~/apps
+    THIS_DIR=$(realpath `dirname $0`)
+    LATEST_BINARY=$(ls -1 $THIS_DIR/Ray-*.*.AppImage | sort -r | head -n 1)
+
+    $LATEST_BINARY
+}
