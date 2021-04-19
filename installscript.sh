@@ -29,7 +29,7 @@ ln -s $HOME/.dotfiles/shell/.zsh_aliases $HOME/.zsh_aliases
 echo '-----------------'
 
 # Symlink functions
-echo 'Symlinkin zsh functions...'
+echo 'Symlinking zsh functions...'
 rm $HOME/.zsh_functions
 ln -s $HOME/.dotfiles/shell/.zsh_functions $HOME/.zsh_functions
 echo '-----------------'

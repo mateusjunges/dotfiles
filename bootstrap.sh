@@ -8,6 +8,10 @@ function bootstrapTerminal() {
     source ~/.dotfiles/installscript.sh
 }
 
+function generateSSHKeyForGithub() {
+    source ~/dotfiles/ssh.sh
+}
+
 echo 'Bootstrap terminal'
 echo '------------------'
 
@@ -18,3 +22,17 @@ if [[ $reply =~ ^[Yy]$ ]]
 then
     bootstrapTerminal
 fi
+
+echo 'Do you want to generate a new ssh key for github?'
+
+read reply_github
+
+if [[ $reply_github =~ ^[Yy]$ ]]
+then
+    generateSSHKeyForGithub
+fi
+
+
+echo "----------------------"
+echo "|      All Done!     |"
+echo "----------------------"
