@@ -27,6 +27,10 @@ fail () {
   exit
 }
 
+generateSSHKeyForGithub() {
+  source $DOTFILES_ROOT/git/ssh.sh
+}
+
 setup_gitconfig () {
   if ! [ -f git/gitconfig.local.symlink ]
   then
@@ -41,7 +45,15 @@ setup_gitconfig () {
 
     sed -e "s/AUTHORNAME/$git_authorname/g" -e "s/AUTHOREMAIL/$git_authoremail/g" -e "s/GIT_CREDENTIAL_HELPER/$git_credential/g" git/gitconfig.local.symlink.example > git/gitconfig.local.symlink
 
-    success 'gitconfig'
+    user ' - Do you want to generate a new ssh key to github? (y/N)'
+    read -e generate_ssh_key
+
+    if [[ $generate_ssh_key =~ ^[Yy]$ ]]
+    then
+        generateSSHKeyForGithub
+    fi
+
+    success 'Git configuration finished successfully'
   fi
 }
 

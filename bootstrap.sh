@@ -9,7 +9,7 @@ function bootstrapTerminal() {
 }
 
 function generateSSHKeyForGithub() {
-    source ~/dotfiles/ssh.sh
+
 }
 
 echo 'Bootstrap terminal'
@@ -27,10 +27,7 @@ echo 'Do you want to generate a new ssh key for github?'
 
 read reply_github
 
-if [[ $reply_github =~ ^[Yy]$ ]]
-then
-    generateSSHKeyForGithub
-fi
+
 
 
 echo "----------------------"
