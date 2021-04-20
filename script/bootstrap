@@ -162,6 +162,28 @@ install_zsh() {
   fi
 }
 
+function generate_gpg_key() {
+  info "Generating a new GPG key to GitHub..."
+
+# Generating a new GPG key
+# https://docs.github.com/en/github/authenticating-to-github/generating-a-new-gpg-key
+gpg --full-generate-key
+
+#Use the gpg --list-secret-keys --keyid-format LONG command to list GPG keys for
+# which you have both a public and private key. A private key is required for signing commits or tags.
+gpg --list-secret-keys --keyid-format LONG
+
+user " - From the list of GPG keys, copy the GPG key ID you'd like to use"
+read -e selected_gpg
+
+# Prints the GPG key ID, in ASCII armor format
+gpg --armor --export $selected_gpg
+
+info "Copy your GPG key, beginning with -----BEGIN PGP PUBLIC KEY BLOCK----- and ending with -----END PGP PUBLIC KEY BLOCK-----."
+
+git config --global user.signingkey $selected_gpg
+}
+
 setup_gitconfig
 
 user ' - Do you want to install OhMyZSH? (y/N)'
@@ -173,5 +195,13 @@ then
 fi
 
 install_dotfiles
+
+user ' - Do you want to generate a GPG key for github? (y/N)'
+read -e want_to_generate_gpg_key
+
+if [[ $want_to_generate_gpg_key =~ ^[Yy]$ ]]
+then
+    generate_gpg_key
+fi
 
 success "Installation finished successfully!"
