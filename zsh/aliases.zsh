@@ -38,10 +38,5 @@ alias stop-pgsql='sudo service postgresql stop'
 alias restart-pgsql='sudo service postgresql restart'
 alias pgadmin4='. ~/Programs/pgAdmin4/pgAdmin4/bin/activate; python ~/Programs/pgAdmin4/pgAdmin4/lib/python2.7/site-packages/pgadmin4/pgAdmin4.py'
 
-
 # Redis:
 alias start-redis='redis-server'
-
-# Tinkerwell
-alias tinkerwell='cd ~/apps/; ./Tinkerwell-2.12.1.AppImage'
-
