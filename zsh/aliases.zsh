@@ -1,3 +1,7 @@
+alias reload!='. ~/.zshrc'
+
+alias cls='clear'
+
 # Alias definitions.
 # You may want to put all your additions into a separete file like
 # ~/.aliases, instead of adding them directly.

@@ -1,8 +1,16 @@
+#!/usr/bin/env bash
+
 echo 'Install oh-my-zsh'
 echo '-----------------'
 
 rm -rf $HOME/.oh-my-zsh/
 curl -L https://raw.github.com/ohmyzsh/ohmyzsh/master/tools/install.sh | sh
+
+echo 'Installing ZSH Autosuggestions...'
+git clone https://github.com/zsh-users/zsh-autosuggestions ${ZSH_CUSTOM:-~/.oh-my-zsh/custom}/plugins/zsh-autosuggestions
+
+echo 'Installing ZSH syntax highlighting...'
+git clone https://github.com/zsh-users/zsh-syntax-highlighting.git ${ZSH_CUSTOM:-~/.oh-my-zsh/custom}/plugins/zsh-syntax-highlighting
 
 # Add a global gitignore
 echo 'Adding a global gitignore file...'
