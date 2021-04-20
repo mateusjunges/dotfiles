@@ -135,3 +135,4 @@ install_dotfiles () {
 
 
 setup_gitconfig
+install_dotfiles
