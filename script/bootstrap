@@ -132,7 +132,6 @@ link_file () {
   fi
 }
 
-
 install_dotfiles () {
   info 'Installing dotfiles...'
 
@@ -145,6 +144,28 @@ install_dotfiles () {
   done
 }
 
+install_zsh() {
+
+  if test ! $(which omz); then
+    info "Installing OhMyZSH..."
+
+    rm -rf $HOME/.oh-my-zsh/
+    curl -L https://raw.github.com/ohmyzsh/ohmyzsh/master/tools/install.sh | sh
+
+    echo 'Installing ZSH Autosuggestions...'
+    git clone https://github.com/zsh-users/zsh-autosuggestions ${ZSH_CUSTOM:-~/.oh-my-zsh/custom}/plugins/zsh-autosuggestions
+
+    echo 'Installing ZSH syntax highlighting...'
+    git clone https://github.com/zsh-users/zsh-syntax-highlighting.git ${ZSH_CUSTOM:-~/.oh-my-zsh/custom}/plugins/zsh-syntax-highlighting
+
+    success "OhMyZSH installed!"
+  fi
+}
 
 setup_gitconfig
+install_zsh
 install_dotfiles
+
+success "Installation finished successfully!"
+
+source $HOME/.zshrc
