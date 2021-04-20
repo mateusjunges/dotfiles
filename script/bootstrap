@@ -163,9 +163,15 @@ install_zsh() {
 }
 
 setup_gitconfig
-install_zsh
+
+user ' - Do you want to install OhMyZSH? (y/N)'
+read -e want_to_install_zsh
+
+if [[ $want_to_install_zsh =~ ^[Yy]$ ]]
+then
+    install_zsh
+fi
+
 install_dotfiles
 
 success "Installation finished successfully!"
-
-source $HOME/.zshrc
