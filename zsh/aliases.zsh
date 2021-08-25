@@ -40,3 +40,6 @@ alias pgadmin4='. ~/Programs/pgAdmin4/pgAdmin4/bin/activate; python ~/Programs/p
 
 # Redis:
 alias start-redis='redis-server'
+
+# Docker 
+alias dc='docker-compose'
