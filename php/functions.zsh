@@ -28,3 +28,19 @@ function tinkerwell() {
 
   $LATEST_BINARY
 }
+
+function p() {
+   if [ -f vendor/bin/pest ]; then
+      vendor/bin/pest "$@"
+   else
+      vendor/bin/phpunit "$@"
+   fi
+}
+
+function pf() {
+   if [ -f vendor/bin/pest ]; then
+      vendor/bin/pest --filter "$@"
+   else
+      vendor/bin/phpunit --filter "$@"
+   fi
+}
