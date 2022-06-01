@@ -26,7 +26,7 @@ function tinkerwell() {
   THIS_DIR=$(realpath `dirname $0`)
   LATEST_BINARY=$(ls -1 $THIS_DIR/Tinkerwell-*.*.*.AppImage | sort -r | head -n 1)
 
-  $LATEST_BINARY
+  $LATEST_BINARY --no-sandbox
 }
 
 function p() {
