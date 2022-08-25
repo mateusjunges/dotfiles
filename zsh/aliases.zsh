@@ -43,3 +43,6 @@ alias start-redis='redis-server'
 
 # Docker 
 alias dc='docker-compose'
+
+# Copy
+alias copy='xclip -sel clip'
