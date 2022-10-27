@@ -15,7 +15,7 @@
         branch = auto
         ui = true
 [core]
-    	excludesfile = ~/.global-gitignore
+	excludesfile = ~/.global-gitignore
         editor = vim
 [apply]
         whitespace = nowarn
@@ -32,4 +32,4 @@
         # Setting to git 2.0 default to suppress warning message
         default = simple
 [user]
-	signingkey = 5A3CC9FA4B122C00
+	signingkey = 89E34D5ACDDBD266
