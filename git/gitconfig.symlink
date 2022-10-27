@@ -15,7 +15,7 @@
         branch = auto
         ui = true
 [core]
-    	excludesfile = $HOME/.global-gitignore
+    	excludesfile = ~/.global-gitignore
         editor = vim
 [apply]
         whitespace = nowarn
