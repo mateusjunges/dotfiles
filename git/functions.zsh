@@ -9,6 +9,18 @@ function commit() {
     eval "git commit -S -m '${message}'"
 }
 
+function commitd() {
+    message="$1"
+    
+    description="$2"
+
+    if [ "$message" = "" ]; then
+        message="wip"
+    fi
+    
+    eval "git commit -S -m '${message}' -m '${description}'"
+}
+
 # Git checkout
 function gco() {
     branch=$1
