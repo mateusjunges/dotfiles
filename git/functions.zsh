@@ -12,6 +12,16 @@ function commit() {
 function commitd() {
     message="$1"
     
+    branch=$(get_current_branch)
+    
+    description=${branch%_*}
+    
+    eval "git commit -S -m '${message}' -m '${description}'"
+}
+
+function commit() {
+    message="$1"
+    
     description="$2"
 
     if [ "$message" = "" ]; then
