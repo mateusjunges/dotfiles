@@ -18,9 +18,9 @@ alias pas='php artisan serve --host=junges'
 alias pa='php artisan'
 alias controller='php artisan make:controller'
 alias model='php artisan make:model'
-alias art='docker-compose exec app php artisan'
-alias test='docker-compose exec app composer test'
-alias t_filter='docker-compose exec app composer test:filter'
+alias art='docker compose exec app php artisan'
+alias test='docker compose exec app composer test'
+alias t_filter='docker compose exec app composer test:filter'
 
 #Composer aliases:
 alias new-laravel='composer create-project --prefer-dist laravel/laravel'
@@ -45,8 +45,8 @@ alias pgadmin4='. ~/Programs/pgAdmin4/pgAdmin4/bin/activate; python ~/Programs/p
 alias start-redis='redis-server'
 
 # Docker 
-alias dc='docker-compose'
-alias dce='docker-compose exec'
+alias dc='docker compose'
+alias dce='docker compose exec'
 
 # Copy
 alias copy='xclip -sel clip'
