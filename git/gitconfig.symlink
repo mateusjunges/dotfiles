@@ -15,7 +15,7 @@
         branch = auto
         ui = true
 [core]
-	excludesfile = ~/.global-gitignore
+	excludesfile = /home/mateus/.global-gitignore
         editor = vim
 [apply]
         whitespace = nowarn

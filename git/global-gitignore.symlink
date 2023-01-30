@@ -65,6 +65,7 @@ Thumbs.db
 .idea/**/vcs.xml
 .idea/**/laravel-idea.xml
 .idea/**/blade.xml
+.idea/
 
 # AWS User-specific
 .idea/**/aws.xml
