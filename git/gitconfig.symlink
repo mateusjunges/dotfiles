@@ -32,6 +32,4 @@
         # Setting to git 2.0 default to suppress warning message
         default = simple
 [user]
-	signingkey = 4D1B2487F2F61AB4
-[use]
-	signinkey = 4D1B2487F2F61AB4
+	signingkey = F1EC57452310A5A2
