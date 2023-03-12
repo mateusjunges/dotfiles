@@ -1,3 +1,6 @@
 eval "$(/opt/homebrew/bin/brew shellenv)"
 
 eval "$(pyenv init --path)"
+
+export PATH=~/.composer/vendor/bin:$PATH
+export PATH="/Users/mateusjunges/.pyenv/bin:$PATH"
