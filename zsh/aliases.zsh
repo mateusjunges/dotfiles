@@ -50,3 +50,6 @@ alias dce='docker compose exec'
 
 # Copy
 alias copy='xclip -sel clip'
+
+# PhpStorm
+alias phpstorm="/Applications/PhpStorm.app/Contents/MacOS/phpstorm ."
