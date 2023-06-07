@@ -16,7 +16,7 @@ function commitd() {
     
     description=${branch%_*}
     
-    eval "git commit -S -m '${message}' -m '${description}'"
+    eval "git commit -S -m '${message}' -m '#${description}'"
 }
 
 function commit() {
