@@ -14,9 +14,9 @@ function commitd() {
     
     branch=$(get_current_branch)
     
-    description=${branch%_*}
+    issueNumber=${branch%_*}
     
-    eval "git commit -S -m '${message}' -m '#${description}'"
+    eval "git commit -S -m '#${issueNumber} ${message}'"
 }
 
 function commit() {
