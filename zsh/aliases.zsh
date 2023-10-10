@@ -6,7 +6,7 @@ alias cls='clear'
 # You may want to put all your additions into a separete file like
 # ~/.aliases, instead of adding them directly.
 
-alias reloadcli='soruce $HOME/.zshrc'
+alias reloadcli='source $HOME/.zshrc'
 
 # Apache 2 aliases
 alias start-apache2='sudo service apache2 start'
@@ -14,16 +14,16 @@ alias stop-apache2='sudo service apache2 stop'
 alias restart-apache2='sudo service apache2 restart'
 
 #PHP artisan aliases:
-alias pas='php artisan serve --host=junges'
+alias pas='php artisan serve'
 alias pa='php artisan'
+alias a='php artisan'
 alias controller='php artisan make:controller'
 alias model='php artisan make:model'
 alias art='docker compose exec app php artisan'
-alias test='docker compose exec app composer test'
-alias tf='docker compose exec app composer test:filter'
+alias test='php artisan test'
+alias tf='php artisan test --filter'
 
 #Composer aliases:
-alias new-laravel='composer create-project --prefer-dist laravel/laravel'
 alias dump-autoload='composer dump-autoload'
 alias cr='composer require'
 
