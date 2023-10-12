@@ -21,7 +21,7 @@ alias controller='php artisan make:controller'
 alias model='php artisan make:model'
 alias art='docker compose exec app php artisan'
 alias test='php artisan test'
-alias tf='php artisan test --filter'
+alias tf='php artisan test'
 
 #Composer aliases:
 alias dump-autoload='composer dump-autoload'
@@ -53,3 +53,24 @@ alias copy='xclip -sel clip'
 
 # PhpStorm
 alias phpstorm="/Applications/PhpStorm.app/Contents/MacOS/phpstorm ."
+
+
+# determine versions of PHP installed with HomeBrew
+installedPhpVersions=($(brew ls --versions | ggrep -E 'php(@.*)?\s' | ggrep -oP '(?<=\s)\d\.\d' | uniq | sort))
+
+# create alias for every version of PHP installed with HomeBrew
+for phpVersion in ${installedPhpVersions[*]}; do
+    value="{"
+
+    for otherPhpVersion in ${installedPhpVersions[*]}; do
+        if [ "${otherPhpVersion}" = "${phpVersion}" ]; then
+            continue;
+        fi
+
+        value="${value} brew unlink php@${otherPhpVersion};"
+    done
+
+    value="${value} brew link php@${phpVersion} --force --overwrite; } &> /dev/null && php -v"
+
+    alias "${phpVersion}"="${value}"
+done
