@@ -33,3 +33,10 @@
         default = simple
 [user]
 	signingkey = F1EC57452310A5A2
+	name = Mateus Junges
+	email = mateus@junges.dev
+[filter "lfs"]
+	clean = git-lfs clean -- %f
+	smudge = git-lfs smudge -- %f
+	process = git-lfs filter-process
+	required = true
