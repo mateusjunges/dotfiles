@@ -54,6 +54,9 @@ alias copy='xclip -sel clip'
 # PhpStorm
 alias phpstorm="/Applications/PhpStorm.app/Contents/MacOS/phpstorm ."
 
+# Tighten
+alias precommit="./vendor/bin/duster fix && ./vendor/bin/duster lint && ./vendor/bin/phpstan && ./vendor/bin/phpunit --exclude-testsuite Integration"
+
 
 # determine versions of PHP installed with HomeBrew
 installedPhpVersions=($(brew ls --versions | ggrep -E 'php(@.*)?\s' | ggrep -oP '(?<=\s)\d\.\d' | uniq | sort))
