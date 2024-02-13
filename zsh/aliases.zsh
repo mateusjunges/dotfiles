@@ -35,6 +35,9 @@ alias restart-mysql='sudo service mysql restart'
 # PHPUnit
 alias phpunit='./vendor/bin/phpunit'
 
+# phpstan
+alias phpstan='./vendor/bin/phpstan'
+
 # Postgresql aliases:
 alias start-pgsql='sudo service postgresql start'
 alias stop-pgsql='sudo service postgresql stop'
