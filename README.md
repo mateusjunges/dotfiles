@@ -36,3 +36,6 @@ This will symlink the appropriate files in `.dotfiles` to your home directory. E
 
 The main file you'll want to change right off the bat is `zsh/zshrc.symlink`, which sets up a few paths that will be different on your particular machine.
 
+`dot` is a simple script that installs dependencies and set MacOS defaults. Run `dot` from time to time to keep you environment fresh and up-to-date. The script can be found in `bin\`.
+
+
