@@ -145,7 +145,6 @@ install_dotfiles () {
 }
 
 install_zsh() {
-
   if test ! $(which omz); then
     info "Installing OhMyZSH..."
 
@@ -206,6 +205,18 @@ then
     generate_gpg_key
 fi
 
+
+# If on a mac, install and setup homebrew
+if [ "$(uname -s)" == "Darwin" ]
+then
+  info "Installing dependencies"
+  if source bin/dot | while read -r data; do info "$data"; done
+  then
+    success "Dependencies installed"
+  else
+    fail "Error installing dependencies"
+  fi
+fi
 
 
 success "Installation finished successfully!"
