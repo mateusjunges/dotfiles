@@ -185,8 +185,6 @@ function generate_gpg_key() {
 
 setup_gitconfig
 
-/bin/bash ./script/install
-
 user ' - Do you want to install OhMyZSH? (y/N)'
 read -e want_to_install_zsh
 
