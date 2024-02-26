@@ -22,6 +22,7 @@ alias model='php artisan make:model'
 alias art='docker compose exec app php artisan'
 alias test='php artisan test'
 alias tf='php artisan test --filter'
+alias pt='php artisan test --parallel'
 
 #Composer aliases:
 alias dump-autoload='composer dump-autoload'
