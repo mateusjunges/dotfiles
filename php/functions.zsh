@@ -1,10 +1,5 @@
 #!/usr/bin/env bash
 
-# Switch php version
-function switchPHP() {
-    sudo update-alternatives --config php
-}
-
 # Start a php server from a directory, optionally specifying the port
 function phpserver() {
     local port="${1:-4000}"
