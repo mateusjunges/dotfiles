@@ -1,4 +1,4 @@
-function helpers() {
+function ph() {
   if ! [ -f .project-helpers ]
   then
     echo "This project does not have any helpers."
