@@ -15,7 +15,7 @@
         branch = auto
         ui = true
 [core]
-	excludesFile = /Users/mateusjunges/.global-gitignore
+	    excludesFile = /Users/mateusjunges/.global-gitignore
         editor = vim
 [apply]
         whitespace = nowarn
