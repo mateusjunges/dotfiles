@@ -139,3 +139,5 @@ fabric.properties
 ray.php # Ignore Spatie ray configuration file
 
 .husky/pre-commit
+
+.project-helpers
