@@ -3,3 +3,4 @@ alias gd='git diff --color | sed "s/^\([^-+ ]*\)[-+ ]/\\1/" | less -r'
 alias amend='git commit --amend'
 alias nah="git reset --hard && git clean -df"
 alias gm='git merge'
+alias gds='git diff --staged'
