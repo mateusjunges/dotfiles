@@ -8,22 +8,6 @@ function phpserver() {
     php -S "${ip}:${port}"
 }
 
-function ray() {
-    cd ~/apps
-    THIS_DIR=$(realpath `dirname $0`)
-    LATEST_BINARY=$(ls -1 $THIS_DIR/Ray-*.*.AppImage | sort -r | head -n 1)
-
-    $LATEST_BINARY
-}
-
-function tinkerwell() {
-  cd ~/apps
-  THIS_DIR=$(realpath `dirname $0`)
-  LATEST_BINARY=$(ls -1 $THIS_DIR/Tinkerwell-*.*.*.AppImage | sort -r | head -n 1)
-
-  $LATEST_BINARY --no-sandbox
-}
-
 function p() {
    if [ -f vendor/bin/pest ]; then
       vendor/bin/pest "$@"
