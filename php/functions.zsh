@@ -33,3 +33,10 @@ function tinker()
        php artisan tinker --execute="dd($1);"
   fi
 }
+
+function composer-link() {
+  repositoryName=${3:-local}
+
+  composer config repositories.$repositoryName '{"type": "path", "url": "'$1'", "options": {"symlink": true}}' --file composer.json
+  composer require $2 @dev
+}
