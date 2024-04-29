@@ -8,9 +8,27 @@ alias cls='clear'
 
 alias reloadcli='source $HOME/.zshrc'
 
+#PHP artisan aliases:
+alias controller='php artisan make:controller'
+alias model='php artisan make:model'
+alias test='php artisan test'
+alias tf='php artisan test --filter'
+alias pt='php artisan test --parallel'
+alias fresh='php artisan migrate:fresh --seed'
+alias pp='php please'
+
 #Composer aliases:
 alias dump-autoload='composer dump-autoload'
 alias cr='composer require'
+
+# PHPUnit
+alias phpunit='./vendor/bin/phpunit'
+
+# Pest
+alias pest='./vendor/bin/pest'
+
+# phpstan
+alias phpstan='./vendor/bin/phpstan'
 
 # Redis:
 alias start-redis='redis-server'
