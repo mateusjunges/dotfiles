@@ -35,8 +35,9 @@ function tinker()
 }
 
 function composer-link() {
-  repositoryName=${3:-local}
+  repositoryName=${2:-local}
+  branchName=${3:-"dev-master"}
 
+  echo $branchName
   composer config repositories.$repositoryName '{"type": "path", "url": "'$1'", "options": {"symlink": true}}' --file composer.json
-  composer require $2 @dev
 }
