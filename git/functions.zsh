@@ -9,16 +9,6 @@ function commit() {
     eval "git commit -S -m '${message}'"
 }
 
-function commitd() {
-    message="$1"
-    
-    branch=$(get_current_branch)
-    
-    issueNumber=${branch%_*}
-    
-    eval "git commit -S -m '#${issueNumber} ${message}'"
-}
-
 function commit() {
     message="$1"
     
@@ -29,6 +19,14 @@ function commit() {
     fi
     
     eval "git commit -S -m '${message}' -m '${description}'"
+}
+
+function wip() {
+  eval "git add ."
+
+  commit
+
+  eval "push"
 }
 
 # Git checkout
