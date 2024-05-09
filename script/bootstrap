@@ -151,12 +151,6 @@ install_zsh() {
     rm -rf $HOME/.oh-my-zsh/
     curl -L https://raw.github.com/ohmyzsh/ohmyzsh/master/tools/install.sh | sh
 
-    echo 'Installing ZSH Autosuggestions...'
-    git clone https://github.com/zsh-users/zsh-autosuggestions ${ZSH_PLUGINS:-~/.oh-my-zsh}/plugins/zsh-autosuggestions
-
-    echo 'Installing ZSH syntax highlighting...'
-    git clone https://github.com/zsh-users/zsh-syntax-highlighting.git ${ZSH_PLUGINS:-~/.oh-my-zsh}/plugins/zsh-syntax-highlighting
-
     success "OhMyZSH installed!"
   fi
 }
