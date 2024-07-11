@@ -28,9 +28,9 @@ function tinker()
 {
   if [ -z "$1" ]
     then
-       php artisan tinker
+       valet php artisan tinker
     else
-       php artisan tinker --execute="dd($1);"
+       valet php artisan tinker --execute="dd($1);"
   fi
 }
 
