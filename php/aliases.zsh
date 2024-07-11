@@ -1,4 +1,5 @@
 #PHP artisan aliases:
+alias php='valet php'
 alias pas='php artisan serve'
 alias pa='php artisan'
 alias a='php artisan'
