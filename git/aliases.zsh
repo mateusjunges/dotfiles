@@ -4,3 +4,4 @@ alias amend='git commit --amend'
 alias nah="git reset --hard && git clean -df"
 alias gm='git merge'
 alias gds='git diff --staged'
+alias clone='git clone'
