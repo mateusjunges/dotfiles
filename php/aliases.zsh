@@ -27,4 +27,4 @@ alias phpstorm="/Applications/PhpStorm.app/Contents/MacOS/phpstorm ."
 # PHPUnit
 alias phpunit='./vendor/bin/phpunit'
 
-alias init="composer install && yarn install && cp .env.example .env && php artisan key:generate"
+alias init="composer install && npm install && cp .env.example .env && php artisan key:generate"
