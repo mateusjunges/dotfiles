@@ -9,6 +9,8 @@
         wtf     = !$DOTFILES/bin/git-wtf
         rank-contributors = !$DOTFILES/bin/git-rank-contributors
         count   = !git shortlog -sn
+[commit]
+        gpgsign = true
 [color]
         diff = auto
         status = auto
