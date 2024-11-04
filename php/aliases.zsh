@@ -13,6 +13,7 @@ alias test='valet php artisan test'
 alias tf='valet php artisan test --filter'
 alias pt='valet php artisan test --parallel'
 alias fresh='valet php artisan migrate:fresh --seed'
+alias cl="rm storage/logs/laravel.log && touch storage/logs/laravel.log"
 
 #Composer aliases:
 alias dump-autoload='composer dump-autoload'
