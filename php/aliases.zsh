@@ -1,18 +1,18 @@
-# Valet aliases
-alias php='valet php'
-alias composer='valet composer'
+# herd aliases
+alias php='herd php'
+alias composer='herd composer'
 
 #PHP artisan aliases:
-alias pas='valet php artisan serve'
-alias pa='valet php artisan'
-alias a='valet php artisan'
-alias controller='valet php artisan make:controller'
-alias model='valet php artisan make:model'
+alias pas='herd php artisan serve'
+alias pa='herd php artisan'
+alias a='herd php artisan'
+alias controller='herd php artisan make:controller'
+alias model='herd php artisan make:model'
 alias art='docker compose exec app php artisan'
-alias test='valet php artisan test'
-alias tf='valet php artisan test --filter'
-alias pt='valet php artisan test --parallel'
-alias fresh='valet php artisan migrate:fresh --seed'
+alias test='herd php artisan test'
+alias tf='herd php artisan test --filter'
+alias pt='herd php artisan test --parallel'
+alias fresh='herd php artisan migrate:fresh --seed'
 alias cl="rm storage/logs/laravel.log && touch storage/logs/laravel.log"
 
 #Composer aliases:
