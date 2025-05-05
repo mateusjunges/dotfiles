@@ -14,6 +14,7 @@ alias tf='herd php artisan test --filter'
 alias pt='herd php artisan test --parallel'
 alias fresh='herd php artisan migrate:fresh --seed'
 alias cl="rm storage/logs/laravel.log && touch storage/logs/laravel.log"
+alias logs="tail -f storage/logs/laravel.log"
 
 alias s="a solo"
 
