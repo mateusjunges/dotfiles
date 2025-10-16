@@ -4,9 +4,11 @@ tap 'homebrew/bundle'
 
 brew 'librdkafka'
 brew 'docker'
-brew 'php@8.3'
+brew 'php@8.4'
+brew 'php@8.5'
 brew 'imagemagick'
 brew 'wget'
+brew 'libpq'
 
 cask 'raycast'
 cask 'whatsapp'

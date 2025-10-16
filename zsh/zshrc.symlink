@@ -110,3 +110,13 @@ export HERD_PHP_74_INI_SCAN_DIR="/Users/mateusjunges/Library/Application Support
 
 # Herd injected PHP 8.2 configuration.
 export HERD_PHP_82_INI_SCAN_DIR="/Users/mateusjunges/Library/Application Support/Herd/config/php/82/"
+
+# Added by Windsurf
+export PATH="/Users/mateusjunges/.codeium/windsurf/bin:$PATH"
+
+
+# Herd injected PHP 8.5 configuration.
+export HERD_PHP_85_INI_SCAN_DIR="/Users/mateusjunges/Library/Application Support/Herd/config/php/85/"
+
+# Export libpq
+export PATH="/opt/homebrew/opt/libpq/bin:$PATH"
