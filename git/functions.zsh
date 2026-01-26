@@ -12,8 +12,6 @@ function commit() {
 function commit() {
     commitMessage="$*"
 
-      git add .
-
       if [ "$commitMessage" = "" ]; then
          # Start spinner in background (suppress job control messages)
          {
