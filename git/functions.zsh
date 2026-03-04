@@ -36,7 +36,7 @@ function commit() {
 
          # Get diff with size limit, include stat summary for context
          diff_input=$(echo "=== Summary ===" && git diff --cached --stat && echo -e "\n=== Diff (truncated if large) ===" && git diff --cached | head -c 50000)
-         commitMessage=$(echo "$diff_input" | claude -p "Write a single-line commit message for this diff. Output ONLY the message, no quotes, no explanation, no markdown.")
+         commitMessage=$(echo "$diff_input" | claude -p "Write a single-line commit message for this diff. It MUST be under 72 characters. Be concise. Output ONLY the message, no quotes, no explanation, no markdown.")
 
          # Stop spinner and clear line
          trap - INT
