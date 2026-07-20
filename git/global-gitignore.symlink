@@ -142,3 +142,4 @@ ray.php # Ignore Spatie ray configuration file
 .phpactor.json
 
 .project-helpers
+**/.claude/settings.local.json

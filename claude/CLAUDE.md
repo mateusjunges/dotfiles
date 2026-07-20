@@ -13,7 +13,7 @@ Never use dashes (— or -) as punctuation in documentation or README files. Rep
 When working with Laravel/PHP projects, check if duster is installed in the project. If it is, use `./vendor/bin/duster fix` to format the code. Otherwise, use the `composer cs` command.
 
 ## Using GitHub
-For questions about GitHub, use the gh tool
-Never mention Claude Code in PR descriptions, PR comments, or issue comments
-Do not include a "Test plan" section in PR descriptions.
-Prefer using paragraph style over bullet points in PR descriptions, issue descriptions, and comments. Use bullet points only when listing multiple items that are not easily described in a single sentence.
+- For questions about GitHub, use the gh tool
+- Never mention Claude or Claude Code in PR descriptions, PR comments, issue comments or commit messages.
+- Do not include a "Test plan" section in PR descriptions.
+- Prefer using paragraph style over bullet points in PR descriptions, issue descriptions, and comments. Use bullet points only when listing multiple items that are not easily described in a single sentence.

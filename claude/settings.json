@@ -52,6 +52,7 @@
     ],
     "defaultMode": "acceptEdits"
   },
+  "model": "opus[1m]",
   "statusLine": {
     "type": "command",
     "command": "~/.claude/statusline.sh"
@@ -61,6 +62,7 @@
     "agent-browser@agent-browser": true
   },
   "alwaysThinkingEnabled": true,
-  "skipDangerousModePermissionPrompt": true,
-  "effortLevel": "high"
+  "effortLevel": "high",
+  "tui": "default",
+  "skipDangerousModePermissionPrompt": true
 }

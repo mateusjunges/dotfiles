@@ -10,7 +10,15 @@ brew 'imagemagick'
 brew 'wget'
 brew 'libpq'
 
+# Mobile development
+brew 'cocoapods'
+brew 'mas'
+
 cask 'raycast'
 cask 'whatsapp'
 cask 'ngrok'
 cask 'postman'
+
+# Mobile development
+cask 'android-studio'
+cask 'temurin@17'
