@@ -21,6 +21,7 @@
 [core]
 	excludesfile = /Users/mateusjunges/.global-gitignore
         editor = vim
+        hooksPath = ~/.dotfiles/git/hooks
 [apply]
         whitespace = nowarn
 [mergetool]
