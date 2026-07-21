@@ -64,5 +64,7 @@
   "alwaysThinkingEnabled": true,
   "effortLevel": "high",
   "tui": "default",
-  "skipDangerousModePermissionPrompt": true
+  "skipDangerousModePermissionPrompt": true,
+  "theme": "dark",
+  "includeCoAuthoredBy": false
 }
