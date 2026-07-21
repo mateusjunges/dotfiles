@@ -37,7 +37,7 @@
         # Setting to git 2.0 default to suppress warning message
         default = simple
 [user]
-	signingkey = F1EC57452310A5A2
+	signingkey = C3FDB9E395C7C987
 	name = Mateus Junges
 	email = mateus@junges.dev
 [filter "lfs"]
