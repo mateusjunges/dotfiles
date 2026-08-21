@@ -16,4 +16,5 @@ When working with Laravel/PHP projects, check if duster is installed in the proj
 - For questions about GitHub, use the gh tool
 - Never mention Claude or Claude Code in PR descriptions, PR comments, issue comments or commit messages.
 - Do not include a "Test plan" section in PR descriptions.
+- Do not include descriptions on commits. Only the title.
 - Prefer using paragraph style over bullet points in PR descriptions, issue descriptions, and comments. Use bullet points only when listing multiple items that are not easily described in a single sentence.
