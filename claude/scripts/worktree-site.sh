@@ -6,6 +6,7 @@
 #   worktree-site.sh              provision $PWD (idempotent)
 #   worktree-site.sh --hook       read the hook payload on stdin, detach, provision
 #   worktree-site.sh --hook-remove tear down the worktree named on stdin
+#   worktree-site.sh --context    one line about $PWD's site, for a hook to inject
 #   worktree-site.sh --status     print the site for $PWD
 #   worktree-site.sh --prune      unlink sites whose worktree is gone
 #   worktree-site.sh --remove     unlink the site for $PWD
@@ -66,6 +67,10 @@ main_clone() {
 
 env_value() { grep -E "^$2=" "$1" 2>/dev/null | head -1 | cut -d= -f2- | tr -d '"'\'' '; }
 
+# T3 creates a worktree before it has named the thread, so the branch can start
+# out as a bare hash. A site named from one of those says nothing about the work.
+placeholder_branch() { [[ "$1" =~ ^[0-9a-f]{6,}$ ]]; }
+
 # Replace a key in a .env, appending it when the file does not carry it yet. A
 # project that leans on a framework default has no line to rewrite, and leaving
 # it that way would point the worktree at whatever the default resolves to.
@@ -124,6 +129,21 @@ seed_database() {
         mysql|mariadb) import_mysql_dump "$dir" "$dump" "$target" "$host" "$port" ;;
         sqlite)        import_sqlite_dump "$dir" "$dump" "$target" ;;
     esac
+}
+
+# Provisioning re-runs after a failure, and a failure late in the run (the site
+# not answering, say) leaves a database that is already loaded. Filling it again
+# would throw away whatever you had been testing against, so only an empty one
+# is ever filled.
+database_is_empty() {
+    local connection="$1" db="$2" host="$3" port="$4" count
+    if [[ "$connection" == sqlite ]]; then
+        [[ ! -s "$db" ]]
+        return
+    fi
+    count="$(mysql_run "$host" "$port" -N -e \
+        "select count(*) from information_schema.tables where table_schema='$db'" 2>/dev/null)"
+    [[ "${count:-0}" -eq 0 ]]
 }
 
 migrate_fresh() { ( cd "$1" && php artisan migrate:fresh --seed --force ) >>"$LOG" 2>&1; }
@@ -197,7 +217,7 @@ import_sqlite_dump() {
 }
 
 provision() {
-    local dir="$1" lock state main branch repo site url owner previous
+    local dir="$1" lock state main branch repo site site_branch url owner
     local connection db base_db db_host db_port
     state="$(state_file "$dir")"
     lock="$STATE_DIR/$(digest "$dir").lock"
@@ -214,20 +234,35 @@ provision() {
     [[ -n "$branch" && "$branch" != "HEAD" ]] || branch="$(basename "$dir")"
 
     repo="$(basename "$main")"; repo="${repo%%.*}"
-    site="$(slug "$repo-$branch")"
 
-    # Reuse an existing link only when it already points at this worktree.
-    owner="$(herd_links | awk -F'\t' -v s="$site" '$1 == s {print $2}')"
-    if [[ -n "$owner" && "$owner" != "$dir" ]]; then
-        site="$site-$(printf '%s' "$dir" | shasum | cut -c1-6)"
+    # The site and the database keep the names they were first given. T3 renames
+    # a thread's branch as the work shifts, and rebuilding these names from the
+    # branch on every run would move the URL out from under an open browser tab
+    # and abandon the database you had been testing against. The one name that
+    # is allowed to change is a site first linked under a placeholder branch,
+    # and --sweep relinks that once a real branch name appears.
+    site=""; site_branch=""
+    if [[ -f "$state" ]]; then
+        site="$(env_value "$state" SITE)"
+        site_branch="$(env_value "$state" SITE_BRANCH)"
     fi
 
-    # The branch can change inside a worktree; retire the old host if so.
-    if [[ -f "$state" ]]; then
-        previous="$(grep -E '^SITE=' "$state" | cut -d= -f2-)"
-        if [[ -n "$previous" && "$previous" != "$site" ]]; then
-            "$HERD" unlink "$previous" >>"$LOG" 2>&1
-            log "unlinked $previous (branch changed to $branch)"
+    # A worktree can already be linked with its state file gone, reaped or from
+    # before this script kept one. Adopt that host instead of adding a second
+    # one for the same directory, and treat its name as already settled.
+    if [[ -z "$site" ]]; then
+        site="$(herd_links | awk -F'\t' -v p="$dir" '$2 == p {print $1}' | head -1)"
+        [[ -n "$site" ]] && site_branch="$branch"
+    fi
+
+    if [[ -z "$site" ]]; then
+        site="$(slug "$repo-$branch")"
+        site_branch="$branch"
+
+        # Reuse an existing link only when it already points at this worktree.
+        owner="$(herd_links | awk -F'\t' -v s="$site" '$1 == s {print $2}')"
+        if [[ -n "$owner" && "$owner" != "$dir" ]]; then
+            site="$site-$(printf '%s' "$dir" | shasum | cut -c1-6)"
         fi
     fi
 
@@ -243,19 +278,35 @@ provision() {
     db_host="$(env_value "$main/.env" DB_HOST)"; [[ -n "$db_host" ]] || db_host=127.0.0.1
     db_port="$(env_value "$main/.env" DB_PORT)"; [[ -n "$db_port" ]] || db_port=3306
 
+    db="$([[ -f "$state" ]] && env_value "$state" DB)"
+
     case "$connection" in
         mysql|mariadb)
             base_db="$(env_value "$main/.env" DB_DATABASE)"
             [[ -n "$base_db" ]] || base_db="laravel"
-            db="$(printf '%s_%s' "$base_db" "$(slug "$branch" | tr '-' '_')" | cut -c1-64)"
+
+            # With no state file the worktree's own .env is the record of which
+            # database it has been using, so adopt that rather than naming a
+            # fresh one and stranding the data already in it. The main clone's
+            # own database is never adopted: seeding would run against it.
+            if [[ -z "$db" && -f "$dir/.env" ]]; then
+                db="$(env_value "$dir/.env" DB_DATABASE)"
+                [[ "$db" != "$base_db" ]] || db=""
+            fi
+
+            [[ -n "$db" ]] || db="$(printf '%s_%s' "$base_db" "$(slug "$branch" | tr '-' '_')" | cut -c1-64)"
             ;;
         sqlite)
             # Absolute, so a main clone pointing at its own file cannot make the
             # worktree share it once the .env is copied across.
             db="$dir/database/database.sqlite"
             ;;
+        *) db="" ;;
+    esac
+
+    case "$connection" in
+        mysql|mariadb|sqlite) ;;
         *)
-            db=""
             log "$dir: DB_CONNECTION=$connection is not handled, leaving the database alone"
             ;;
     esac
@@ -263,8 +314,8 @@ provision() {
     # MAIN is recorded so a teardown can still name the main clone after the
     # worktree it would have been derived from is gone, and CONNECTION so it
     # knows whether DB names a database to drop or a file that goes with it.
-    printf 'SITE=%s\nURL=%s\nCONNECTION=%s\nDB=%s\nDB_HOST=%s\nDB_PORT=%s\nBRANCH=%s\nPATH_=%s\nMAIN=%s\nSTATUS=provisioning\n' \
-        "$site" "$url" "$connection" "$db" "$db_host" "$db_port" "$branch" "$dir" "$main" >"$state"
+    printf 'SITE=%s\nSITE_BRANCH=%s\nURL=%s\nCONNECTION=%s\nDB=%s\nDB_HOST=%s\nDB_PORT=%s\nBRANCH=%s\nPATH_=%s\nMAIN=%s\nSTATUS=provisioning\n' \
+        "$site" "$site_branch" "$url" "$connection" "$db" "$db_host" "$db_port" "$branch" "$dir" "$main" >"$state"
 
     log "provisioning $dir -> $url ($connection ${db:-none})"
 
@@ -278,7 +329,11 @@ provision() {
 
     if [[ -n "$db" ]]; then
         [[ "$connection" == sqlite ]] || mysql_run "$db_host" "$db_port" -e "CREATE DATABASE IF NOT EXISTS \`$db\`" >>"$LOG" 2>&1
-        seed_database "$dir" "$main" "$connection" "$db" "$db_host" "$db_port"
+        if database_is_empty "$connection" "$db" "$db_host" "$db_port"; then
+            seed_database "$dir" "$main" "$connection" "$db" "$db_host" "$db_port"
+        else
+            log "database $db already has content: leaving it alone"
+        fi
     fi
 
     artisan_if_available "$dir" wayfinder:generate --with-form
@@ -431,6 +486,37 @@ reap() {
     return 0
 }
 
+# Move a site that was linked under a placeholder branch onto the real branch
+# name, once T3 has settled on one. Only the host moves: the database keeps its
+# name so nothing that was seeded into it is stranded.
+relink_site() {
+    local dir="$1" state site branch old_site url
+
+    state="$(state_file "$dir")"
+    [[ -f "$state" ]] || return 0
+    old_site="$(env_value "$state" SITE)"
+    placeholder_branch "$(env_value "$state" SITE_BRANCH)" || return 0
+
+    branch="$(git -C "$dir" rev-parse --abbrev-ref HEAD 2>/dev/null)"
+    branch="${branch##*/}"
+    [[ -n "$branch" && "$branch" != "HEAD" ]] || return 0
+    placeholder_branch "$branch" && return 0
+
+    site="$(slug "$(basename "$(env_value "$state" MAIN)" | cut -d. -f1)-$branch")"
+    [[ -n "$site" && "$site" != "$old_site" ]] || return 0
+
+    url="https://$site.test"
+    ( cd "$dir" && "$HERD" link "$site" && "$HERD" secure "$site" ) >>"$LOG" 2>&1 || return 0
+    [[ -n "$old_site" ]] && "$HERD" unlink "$old_site" >>"$LOG" 2>&1
+
+    [[ -f "$dir/.env" ]] && set_env_value "$dir/.env" APP_URL "$url"
+    ( cd "$dir" && php artisan config:clear ) >>"$LOG" 2>&1
+    /usr/bin/sed -i '' -E "s|^SITE=.*|SITE=$site|; s|^SITE_BRANCH=.*|SITE_BRANCH=$branch|; s|^URL=.*|URL=$url|" "$state"
+
+    log "relinked $old_site -> $site (branch named)"
+    notify "Worktree site renamed" "$site.test"
+}
+
 prune() {
     herd_links | while IFS=$'\t' read -r name path; do
         [[ "$path" == "$WORKTREE_ROOT"/* ]] || continue
@@ -478,11 +564,11 @@ case "${1:-}" in
         qualifies "$target" || exit 0
         state="$(state_file "$target")"
         if [[ -f "$state" ]]; then
-            status="$(grep -E '^STATUS=' "$state" | cut -d= -f2-)"
-            branch="$(git -C "$target" rev-parse --abbrev-ref HEAD 2>/dev/null)"
-            recorded="$(grep -E '^BRANCH=' "$state" | cut -d= -f2-)"
-            # Nothing to do unless the last run failed or the branch moved on.
-            [[ "$status" == "failed" || "${branch##*/}" != "$recorded" ]] || exit 0
+            # The site and database names no longer follow the branch, so a
+            # rename is not a reason to build anything again. Only a run that
+            # did not finish is.
+            relink_site "$target"
+            [[ "$(env_value "$state" STATUS)" == "failed" ]] || exit 0
         fi
         provision "$target"
         ;;
@@ -525,6 +611,22 @@ case "${1:-}" in
         done
         teardown "$target"
         prune
+        ;;
+    --context)
+        # Read by a synchronous hook, so it does no work beyond one file read:
+        # the URL is whatever the last provisioning run settled on.
+        target="$(hook_path)"
+        [[ -n "$target" ]] || target="$PWD"
+        state="$(state_file "$target")"
+        [[ -f "$state" ]] || exit 0
+        url="$(env_value "$state" URL)"
+        [[ -n "$url" ]] || exit 0
+        case "$(env_value "$state" STATUS)" in
+            ready) printf 'This worktree is served at %s (database %s). Use it to check changes in a browser.\n' \
+                       "$url" "$(env_value "$state" DB)" ;;
+            failed) printf 'This worktree'"'"'s site %s failed to provision; see %s.\n' "$url" "$LOG" ;;
+            *) printf 'This worktree is being provisioned at %s.\n' "$url" ;;
+        esac
         ;;
     --reap)
         reap "$PWD" "${2:-}"

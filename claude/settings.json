@@ -63,6 +63,11 @@
             "command": "\"$HOME/.claude/scripts/worktree-site.sh\" --hook",
             "timeout": 15,
             "async": true
+          },
+          {
+            "type": "command",
+            "command": "\"$HOME/.claude/scripts/worktree-site.sh\" --context",
+            "timeout": 5
           }
         ]
       }
@@ -75,6 +80,17 @@
             "command": "\"$HOME/.claude/scripts/worktree-site.sh\" --hook",
             "timeout": 15,
             "async": true
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"$HOME/.claude/scripts/worktree-site.sh\" --context",
+            "timeout": 5
           }
         ]
       }
