@@ -64,6 +64,41 @@ main_clone() {
     dirname "$common"
 }
 
+env_value() { grep -E "^$2=" "$1" 2>/dev/null | head -1 | cut -d= -f2- | tr -d '"'\'' '; }
+
+# Replace a key in a .env, appending it when the file does not carry it yet. A
+# project that leans on a framework default has no line to rewrite, and leaving
+# it that way would point the worktree at whatever the default resolves to.
+set_env_value() {
+    local file="$1" key="$2" value="$3"
+    if grep -qE "^$key=" "$file"; then
+        /usr/bin/sed -i '' -E "s|^$key=.*|$key=$value|" "$file"
+    else
+        printf '%s=%s\n' "$key" "$value" >>"$file"
+    fi
+}
+
+mysql_run() {
+    local host="$1" port="$2"; shift 2
+    "$MYSQL" -h "$host" -P "$port" -u root "$@"
+}
+
+# Run an artisan command only when the project actually provides it, so a
+# project without the package behind it is skipped instead of logging a failure.
+artisan_if_available() {
+    local dir="$1" command="$2"; shift 2
+    ( cd "$dir" && php artisan "$command" --help ) >/dev/null 2>&1 || return 0
+    ( cd "$dir" && php artisan "$command" "$@" ) >>"$LOG" 2>&1
+}
+
+npm_run_if_available() {
+    local dir="$1" script="$2"
+    [[ -f "$dir/package.json" ]] || return 0
+    /usr/bin/python3 -c 'import json,sys; sys.exit(0 if sys.argv[2] in json.load(open(sys.argv[1])).get("scripts",{}) else 1)' \
+        "$dir/package.json" "$script" 2>/dev/null || return 0
+    ( cd "$dir" && npm run "$script" ) >>"$LOG" 2>&1
+}
+
 # storage/ is not something a branch carries around, so the dump realistically
 # lives in the main clone; the worktree is checked first only for the project
 # that does commit one.
@@ -76,21 +111,34 @@ find_dump() {
 }
 
 # Fill a database that was just created: from the project's dump when there is
-# one, otherwise from a fresh migration with seeders.
-#
+# one, otherwise from a fresh migration with seeders. Migrations run after an
+# import because a dump is a snapshot and the branch may add migrations on top
+# of it; seeders do not, because imported rows are real data rather than a
+# blank slate.
+seed_database() {
+    local dir="$1" main="$2" connection="$3" target="$4" host="$5" port="$6" dump
+
+    dump="$(find_dump "$dir" "$main")" || dump=""
+
+    case "$connection" in
+        mysql|mariadb) import_mysql_dump "$dir" "$dump" "$target" "$host" "$port" ;;
+        sqlite)        import_sqlite_dump "$dir" "$dump" "$target" ;;
+    esac
+}
+
+migrate_fresh() { ( cd "$1" && php artisan migrate:fresh --seed --force ) >>"$LOG" 2>&1; }
+
 # A dump names the database it was taken from. TablePlus writes a `use` line and
 # `mysqldump --databases` writes CREATE DATABASE and USE. Left in, those
 # statements point the import at that database instead of this branch's one and
 # overwrite it, so they are stripped and the import can only land where we mean
-# it to. Migrations run afterwards because a dump is a snapshot and the branch
-# may add migrations on top of it; seeders do not, because the imported rows are
-# real data rather than a blank slate.
-seed_database() {
-    local dir="$1" main="$2" db="$3" dump reader
+# it to.
+import_mysql_dump() {
+    local dir="$1" dump="$2" db="$3" host="$4" port="$5" reader
 
-    if ! dump="$(find_dump "$dir" "$main")"; then
+    if [[ -z "$dump" ]]; then
         log "no dump at $DUMP_RELATIVE: migrating fresh with seeders"
-        ( cd "$dir" && php artisan migrate:fresh --seed --force ) >>"$LOG" 2>&1
+        migrate_fresh "$dir"
         return
     fi
 
@@ -100,18 +148,57 @@ seed_database() {
     log "importing $dump into $db"
     if "$reader" "$dump" \
         | /usr/bin/sed -E '/^[[:space:]]*(USE|CREATE DATABASE|DROP DATABASE)[[:space:]]/I d' \
-        | "$MYSQL" -h 127.0.0.1 -u root "$db" 2>>"$LOG"
+        | mysql_run "$host" "$port" "$db" 2>>"$LOG"
     then
         ( cd "$dir" && php artisan migrate --force ) >>"$LOG" 2>&1
         log "imported $dump into $db"
     else
         log "import of $dump failed: falling back to a fresh migration"
-        ( cd "$dir" && php artisan migrate:fresh --seed --force ) >>"$LOG" 2>&1
+        migrate_fresh "$dir"
+    fi
+}
+
+# On sqlite the database is a file, so importing is replacing that file. A dump
+# that is not itself a sqlite database cannot be used here: a MySQL dump left in
+# place by a project that has since moved to sqlite would otherwise be copied
+# over the database and corrupt it.
+import_sqlite_dump() {
+    local dir="$1" dump="$2" file="$3" kind
+
+    mkdir -p "$(dirname "$file")"
+
+    if [[ -z "$dump" ]]; then
+        log "no dump at $DUMP_RELATIVE: migrating fresh with seeders"
+        : >"$file"
+        migrate_fresh "$dir"
+        return
+    fi
+
+    kind="$(file --mime-type -b "$dump")"
+    if [[ "$kind" == "application/gzip" ]]; then
+        gzcat "$dump" >"$file" 2>>"$LOG"
+    elif [[ "$kind" == "application/vnd.sqlite3" ]]; then
+        cp "$dump" "$file"
+    else
+        log "dump $dump is $kind, not a sqlite database: migrating fresh instead"
+        : >"$file"
+        migrate_fresh "$dir"
+        return
+    fi
+
+    if [[ "$(file --mime-type -b "$file")" == "application/vnd.sqlite3" ]]; then
+        ( cd "$dir" && php artisan migrate --force ) >>"$LOG" 2>&1
+        log "imported $dump into $file"
+    else
+        log "dump $dump did not yield a sqlite database: migrating fresh instead"
+        : >"$file"
+        migrate_fresh "$dir"
     fi
 }
 
 provision() {
-    local dir="$1" lock state main branch repo site url db base_db owner previous
+    local dir="$1" lock state main branch repo site url owner previous
+    local connection db base_db db_host db_port
     state="$(state_file "$dir")"
     lock="$STATE_DIR/$(digest "$dir").lock"
 
@@ -145,29 +232,57 @@ provision() {
     fi
 
     url="https://$site.test"
-    base_db="$(grep -E '^DB_DATABASE=' "$main/.env" | head -1 | cut -d= -f2- | tr -d '"'"'"' ')"
-    [[ -n "$base_db" ]] || base_db="laravel"
-    db="$(printf '%s_%s' "$base_db" "$(slug "$branch" | tr '-' '_')" | cut -c1-64)"
+
+    # How a worktree gets its own database depends on what the project runs on.
+    # On MySQL that is a database named after the branch; on sqlite the database
+    # is a file, and a worktree is already a separate directory, so it gets one
+    # for free. Anything else is left alone rather than guessed at: a wrong
+    # guess here writes to a database the project does use.
+    connection="$(env_value "$main/.env" DB_CONNECTION)"
+    [[ -n "$connection" ]] || connection=mysql
+    db_host="$(env_value "$main/.env" DB_HOST)"; [[ -n "$db_host" ]] || db_host=127.0.0.1
+    db_port="$(env_value "$main/.env" DB_PORT)"; [[ -n "$db_port" ]] || db_port=3306
+
+    case "$connection" in
+        mysql|mariadb)
+            base_db="$(env_value "$main/.env" DB_DATABASE)"
+            [[ -n "$base_db" ]] || base_db="laravel"
+            db="$(printf '%s_%s' "$base_db" "$(slug "$branch" | tr '-' '_')" | cut -c1-64)"
+            ;;
+        sqlite)
+            # Absolute, so a main clone pointing at its own file cannot make the
+            # worktree share it once the .env is copied across.
+            db="$dir/database/database.sqlite"
+            ;;
+        *)
+            db=""
+            log "$dir: DB_CONNECTION=$connection is not handled, leaving the database alone"
+            ;;
+    esac
 
     # MAIN is recorded so a teardown can still name the main clone after the
-    # worktree it would have been derived from is gone.
-    printf 'SITE=%s\nURL=%s\nDB=%s\nBRANCH=%s\nPATH_=%s\nMAIN=%s\nSTATUS=provisioning\n' \
-        "$site" "$url" "$db" "$branch" "$dir" "$main" >"$state"
+    # worktree it would have been derived from is gone, and CONNECTION so it
+    # knows whether DB names a database to drop or a file that goes with it.
+    printf 'SITE=%s\nURL=%s\nCONNECTION=%s\nDB=%s\nDB_HOST=%s\nDB_PORT=%s\nBRANCH=%s\nPATH_=%s\nMAIN=%s\nSTATUS=provisioning\n' \
+        "$site" "$url" "$connection" "$db" "$db_host" "$db_port" "$branch" "$dir" "$main" >"$state"
 
-    log "provisioning $dir -> $url (db $db)"
+    log "provisioning $dir -> $url ($connection ${db:-none})"
 
     [[ -f "$dir/.env" ]] || cp "$main/.env" "$dir/.env"
     # Rewritten every run: the branch, and so the host and database, can change.
-    /usr/bin/sed -i '' -E "s|^APP_URL=.*|APP_URL=$url|; s|^DB_DATABASE=.*|DB_DATABASE=$db|" "$dir/.env"
+    set_env_value "$dir/.env" APP_URL "$url"
+    [[ -n "$db" ]] && set_env_value "$dir/.env" DB_DATABASE "$db"
 
     ( cd "$dir" && composer install --no-interaction --quiet ) >>"$LOG" 2>&1
-    ( cd "$dir" && { npm ci --silent || npm install --silent; } ) >>"$LOG" 2>&1
+    [[ -f "$dir/package.json" ]] && ( cd "$dir" && { npm ci --silent || npm install --silent; } ) >>"$LOG" 2>&1
 
-    "$MYSQL" -h 127.0.0.1 -u root -e "CREATE DATABASE IF NOT EXISTS \`$db\`" >>"$LOG" 2>&1
+    if [[ -n "$db" ]]; then
+        [[ "$connection" == sqlite ]] || mysql_run "$db_host" "$db_port" -e "CREATE DATABASE IF NOT EXISTS \`$db\`" >>"$LOG" 2>&1
+        seed_database "$dir" "$main" "$connection" "$db" "$db_host" "$db_port"
+    fi
 
-    seed_database "$dir" "$main" "$db"
-    ( cd "$dir" && php artisan wayfinder:generate --with-form ) >>"$LOG" 2>&1
-    ( cd "$dir" && npm run build ) >>"$LOG" 2>&1
+    artisan_if_available "$dir" wayfinder:generate --with-form
+    npm_run_if_available "$dir" build
 
     # `herd link` runs a Boost hook that rewrites bundled skill files. Revert
     # only what it touched under .claude/, so the branch diff stays clean.
@@ -211,7 +326,7 @@ settled_worktrees() {
 droppable_database() {
     local db="$1" main="$2" base
     [[ -n "$db" && -n "$main" ]] || return 1
-    base="$(grep -E '^DB_DATABASE=' "$main/.env" 2>/dev/null | head -1 | cut -d= -f2- | tr -d '"'\'' ')"
+    base="$(env_value "$main/.env" DB_DATABASE)"
     [[ -n "$base" ]] || return 1
     [[ "$db" != "$base" ]] || return 1
     [[ "$db" == "${base}_"* ]] || return 1
@@ -245,15 +360,21 @@ safe_to_delete() {
 # The directory being gone already is normal: T3 removes the worktree itself when
 # a thread is deleted, and the site and database still have to follow it.
 teardown() {
-    local dir="$1" dry="${2:-}" state site db main
+    local dir="$1" dry="${2:-}" state site db main connection db_host db_port
 
     state="$(state_file "$dir")"
-    site=""; db=""; main=""
+    site=""; db=""; main=""; connection=""; db_host=127.0.0.1; db_port=3306
     if [[ -f "$state" ]]; then
-        site="$(grep -E '^SITE=' "$state" | cut -d= -f2-)"
-        db="$(grep -E '^DB=' "$state" | cut -d= -f2-)"
-        main="$(grep -E '^MAIN=' "$state" | cut -d= -f2-)"
+        site="$(env_value "$state" SITE)"
+        db="$(env_value "$state" DB)"
+        main="$(env_value "$state" MAIN)"
+        connection="$(env_value "$state" CONNECTION)"
+        db_host="$(env_value "$state" DB_HOST)"; [[ -n "$db_host" ]] || db_host=127.0.0.1
+        db_port="$(env_value "$state" DB_PORT)"; [[ -n "$db_port" ]] || db_port=3306
     fi
+    # A sqlite database is a file inside the worktree, so it has already gone
+    # wherever the worktree went and there is nothing separate to drop.
+    [[ "$connection" == sqlite ]] && db=""
     [[ -n "$site" ]] || site="$(herd_links | awk -F'\t' -v p="$dir" '$2 == p {print $1}')"
 
     if [[ -d "$dir" ]]; then
@@ -283,7 +404,7 @@ teardown() {
     if [[ -z "$db" ]]; then
         :
     elif droppable_database "$db" "$main"; then
-        "$MYSQL" -h 127.0.0.1 -u root -e "DROP DATABASE IF EXISTS \`$db\`" >>"$LOG" 2>&1
+        mysql_run "$db_host" "$db_port" -e "DROP DATABASE IF EXISTS \`$db\`" >>"$LOG" 2>&1
         log "dropped database $db"
     elif [[ -z "$main" ]]; then
         log "kept database $db: no main clone to check the name against"
@@ -418,11 +539,12 @@ case "${1:-}" in
     --remove)
         state="$(state_file "$PWD")"
         [[ -f "$state" ]] || { echo "no site for $PWD"; exit 1; }
-        # shellcheck disable=SC1090
-        . "$state"
-        "$HERD" unlink "$SITE"
+        site="$(env_value "$state" SITE)"
+        db="$(env_value "$state" DB)"
+        "$HERD" unlink "$site"
         rm -f "$state"
-        echo "unlinked $SITE (database $DB kept)"
+        echo "unlinked $site"
+        [[ -n "$db" ]] && echo "database $db kept"
         ;;
     *)
         prune
