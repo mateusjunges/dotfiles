@@ -67,6 +67,10 @@ if [ -d "$DOTFILES_DIR/claude" ]; then
     rm -rf ~/.claude/agents
     ln -sf "$DOTFILES_DIR/claude/agents" ~/.claude/agents
 
+    # Symlink entire scripts directory (worktree site provisioning hooks)
+    rm -rf ~/.claude/scripts
+    ln -sfn "$DOTFILES_DIR/claude/scripts" ~/.claude/scripts
+
     success "Claude Code configured"
 else
     warn "Dotfiles directory not found, skipping configuration"
