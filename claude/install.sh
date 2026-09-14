@@ -67,9 +67,14 @@ if [ -d "$DOTFILES_DIR/claude" ]; then
     rm -rf ~/.claude/agents
     ln -sf "$DOTFILES_DIR/claude/agents" ~/.claude/agents
 
-    # Symlink entire scripts directory (worktree site provisioning hooks)
-    rm -rf ~/.claude/scripts
-    ln -sfn "$DOTFILES_DIR/claude/scripts" ~/.claude/scripts
+    # Worktree site provisioning: the sweeper runs for every T3 agent runtime,
+    # so it lives outside claude/ and is driven by launchd rather than hooks
+    # alone. The hooks in settings.json call it by its dotfiles path.
+    mkdir -p ~/Library/LaunchAgents
+    ln -sf "$DOTFILES_DIR/t3/dev.junges.worktree-sites.plist" ~/Library/LaunchAgents/dev.junges.worktree-sites.plist
+    launchctl bootout "gui/$(id -u)/dev.junges.worktree-sites" 2>/dev/null || true
+    launchctl bootstrap "gui/$(id -u)" ~/Library/LaunchAgents/dev.junges.worktree-sites.plist 2>/dev/null || true
+    ln -sf "$DOTFILES_DIR/t3/worktree-site.sh" "$DOTFILES_DIR/bin/worktree-site"
 
     success "Claude Code configured"
 else

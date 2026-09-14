@@ -8,6 +8,8 @@
 #   worktree-site.sh --hook-remove tear down the worktree named on stdin
 #   worktree-site.sh --context    one line about $PWD's site, for a hook to inject
 #   worktree-site.sh --status     print the site for $PWD
+#   worktree-site.sh --sweep-all  provision and reap every worktree, whatever
+#                                 agent runtime its thread runs on
 #   worktree-site.sh --prune      unlink sites whose worktree is gone
 #   worktree-site.sh --remove     unlink the site for $PWD
 #   worktree-site.sh --reap       tear down worktrees whose T3 thread is settled
@@ -25,6 +27,7 @@ HERD="$HOME/Library/Application Support/Herd/bin/herd"
 MYSQL="$HOME/Library/Application Support/Herd/bin/mysql"
 T3_STATE="${T3_STATE:-$HOME/.t3/userdata/state.sqlite}"
 DUMP_RELATIVE="storage/database/copy.dump"
+RETRY_AFTER=900   # seconds to wait before retrying a worktree that failed
 
 mkdir -p "$STATE_DIR"
 
@@ -356,16 +359,21 @@ provision() {
 
     if curl -sk -o /dev/null -w '%{http_code}' "$url" | grep -qE '^(200|30[0-9])$'; then
         /usr/bin/sed -i '' 's/^STATUS=.*/STATUS=ready/' "$state"
+        set_env_value "$state" FAILED_AT ""
         log "ready $url"
         notify "Worktree site ready" "$site.test"
     else
         /usr/bin/sed -i '' 's/^STATUS=.*/STATUS=failed/' "$state"
+        # Stamped so the sweep can back off. Without this a worktree that keeps
+        # failing reinstalls its dependencies and rebuilds its assets every
+        # single time the sweep comes round.
+        set_env_value "$state" FAILED_AT "$(date +%s)"
         log "FAILED $url - see $LOG"
         notify "Worktree site failed" "$site.test - see provision.log"
     fi
 }
 
-SETTLED_QUERY="$HOME/.claude/scripts/settled-worktrees.py"
+SETTLED_QUERY="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/settled-worktrees.py"
 
 # Worktree paths whose T3 thread is settled. This reads T3's private schema, so
 # it fails closed: a missing file, a renamed column or any query error yields
@@ -490,19 +498,30 @@ reap() {
 # name, once T3 has settled on one. Only the host moves: the database keeps its
 # name so nothing that was seeded into it is stranded.
 relink_site() {
-    local dir="$1" state site branch old_site url
+    local dir="$1" state site branch old_site site_branch url main repo
 
     state="$(state_file "$dir")"
     [[ -f "$state" ]] || return 0
     old_site="$(env_value "$state" SITE)"
-    placeholder_branch "$(env_value "$state" SITE_BRANCH)" || return 0
+    site_branch="$(env_value "$state" SITE_BRANCH)"
+    # State written before SITE_BRANCH was recorded still has a site name whose
+    # tail is what the branch contributed, so fall back to reading it back out.
+    [[ -n "$site_branch" ]] || site_branch="${old_site##*-}"
+    placeholder_branch "$site_branch" || return 0
 
     branch="$(git -C "$dir" rev-parse --abbrev-ref HEAD 2>/dev/null)"
     branch="${branch##*/}"
     [[ -n "$branch" && "$branch" != "HEAD" ]] || return 0
     placeholder_branch "$branch" && return 0
 
-    site="$(slug "$(basename "$(env_value "$state" MAIN)" | cut -d. -f1)-$branch")"
+    # MAIN is absent from state written before it was recorded, and without it
+    # the site loses the repository half of its name.
+    main="$(env_value "$state" MAIN)"
+    [[ -n "$main" ]] || main="$(main_clone "$dir")"
+    [[ -n "$main" ]] || return 0
+    repo="$(basename "$main")"; repo="${repo%%.*}"
+
+    site="$(slug "$repo-$branch")"
     [[ -n "$site" && "$site" != "$old_site" ]] || return 0
 
     url="https://$site.test"
@@ -511,13 +530,27 @@ relink_site() {
 
     [[ -f "$dir/.env" ]] && set_env_value "$dir/.env" APP_URL "$url"
     ( cd "$dir" && php artisan config:clear ) >>"$LOG" 2>&1
-    /usr/bin/sed -i '' -E "s|^SITE=.*|SITE=$site|; s|^SITE_BRANCH=.*|SITE_BRANCH=$branch|; s|^URL=.*|URL=$url|" "$state"
+    # set_env_value rather than sed: legacy state has no SITE_BRANCH or MAIN line
+    # to substitute, and a missing key has to be added rather than skipped.
+    set_env_value "$state" SITE "$site"
+    set_env_value "$state" SITE_BRANCH "$branch"
+    set_env_value "$state" URL "$url"
+    set_env_value "$state" MAIN "$main"
 
     log "relinked $old_site -> $site (branch named)"
     notify "Worktree site renamed" "$site.test"
 }
 
 prune() {
+    # Drop git's record of worktrees whose directory has gone. A teardown removes
+    # both together, but one interrupted part way leaves the entry behind and git
+    # goes on reporting a worktree that is not there.
+    for dir in "$WORKTREE_ROOT"/*/*; do
+        [[ -d "$dir" ]] && main_clone "$dir"
+    done | sort -u | while read -r main; do
+        [[ -n "$main" ]] && git -C "$main" worktree prune >>"$LOG" 2>&1
+    done
+
     herd_links | while IFS=$'\t' read -r name path; do
         [[ "$path" == "$WORKTREE_ROOT"/* ]] || continue
         [[ -d "$path" ]] && continue
@@ -627,6 +660,33 @@ case "${1:-}" in
             failed) printf 'This worktree'"'"'s site %s failed to provision; see %s.\n' "$url" "$LOG" ;;
             *) printf 'This worktree is being provisioned at %s.\n' "$url" ;;
         esac
+        ;;
+    --sweep-all)
+        # T3 gives Codex and Gemini threads worktrees too, and those runtimes
+        # never read the Claude hooks, so nothing tells this script about them.
+        # Walking every worktree instead of waiting to be told is what makes the
+        # whole thing work regardless of which agent a thread runs on.
+        cd / || exit 0
+        lock="$STATE_DIR/sweep-all.lock"
+        mkdir "$lock" 2>/dev/null || exit 0
+        trap 'rmdir "$lock" 2>/dev/null' EXIT
+
+        reap ""
+        prune
+        for target in "$WORKTREE_ROOT"/*/*; do
+            [[ -d "$target" ]] || continue
+            qualifies "$target" || continue
+            state="$(state_file "$target")"
+            if [[ -f "$state" ]]; then
+                relink_site "$target"
+                [[ "$(env_value "$state" STATUS)" == "failed" ]] || continue
+                failed_at="$(env_value "$state" FAILED_AT)"
+                if [[ -n "$failed_at" ]] && (( $(date +%s) - failed_at < RETRY_AFTER )); then
+                    continue
+                fi
+            fi
+            provision "$target"
+        done
         ;;
     --reap)
         reap "$PWD" "${2:-}"
