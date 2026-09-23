@@ -4,12 +4,13 @@
 # opened in a browser without checking it out in the default clone.
 #
 #   worktree-site.sh              provision $PWD (idempotent)
-#   worktree-site.sh --hook       read the hook payload on stdin, detach, provision
+#   worktree-site.sh --setup      provision the worktree T3 just created; this is
+#                                 the T3 setup script (defaultProjectScripts)
 #   worktree-site.sh --hook-remove tear down the worktree named on stdin
 #   worktree-site.sh --context    one line about $PWD's site, for a hook to inject
 #   worktree-site.sh --status     print the site for $PWD
-#   worktree-site.sh --sweep-all  provision and reap every worktree, whatever
-#                                 agent runtime its thread runs on
+#   worktree-site.sh --sweep-all  reap and relink every worktree, whatever agent
+#                                 runtime its thread runs on
 #   worktree-site.sh --prune      unlink sites whose worktree is gone
 #   worktree-site.sh --remove     unlink the site for $PWD
 #   worktree-site.sh --reap       tear down worktrees whose T3 thread is settled
@@ -17,6 +18,10 @@
 #
 # A worktree's database starts from storage/database/copy.dump when the project
 # keeps one, and from a fresh migration with seeders when it does not.
+#
+# Sites are named <branch>.<repo>.test, a subdomain of the project, so one
+# wildcard redirect URI (https://*.<repo>.test/authenticate in WorkOS) covers
+# every worktree of it.
 #
 set -uo pipefail
 
@@ -27,15 +32,17 @@ HERD="$HOME/Library/Application Support/Herd/bin/herd"
 MYSQL="$HOME/Library/Application Support/Herd/bin/mysql"
 T3_STATE="${T3_STATE:-$HOME/.t3/userdata/state.sqlite}"
 DUMP_RELATIVE="storage/database/copy.dump"
-RETRY_AFTER=900   # seconds to wait before retrying a worktree that failed
+BRANCH_WAIT=60    # seconds the setup script waits for T3 to name the branch
 
 mkdir -p "$STATE_DIR"
 
-# The sweep runs on every session start, so the log is capped rather than left
-# to grow without bound.
+# The sweep runs every minute, so the log is capped rather than left to grow
+# without bound. Under --setup each line is echoed too: T3 shows the setup
+# script's last few lines of output on the thread's worktree card.
 log() {
     [[ -f "$LOG" && "$(wc -c <"$LOG")" -gt 1048576 ]] && { tail -n 500 "$LOG" >"$LOG.trim" && mv "$LOG.trim" "$LOG"; }
     printf '%s %s\n' "$(date '+%Y-%m-%d %H:%M:%S')" "$*" >>"$LOG"
+    [[ -z "${ECHO_LOG:-}" ]] || printf '%s\n' "$*"
 }
 slug() { printf '%s' "$1" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9]\{1,\}/-/g; s/^-//; s/-$//'; }
 digest() { printf '%s' "$1" | shasum | cut -c1-12; }
@@ -73,6 +80,51 @@ env_value() { grep -E "^$2=" "$1" 2>/dev/null | head -1 | cut -d= -f2- | tr -d '
 # T3 creates a worktree before it has named the thread, so the branch can start
 # out as a bare hash. A site named from one of those says nothing about the work.
 placeholder_branch() { [[ "$1" =~ ^[0-9a-f]{6,}$ ]]; }
+
+# The branch is one DNS label, so it is capped well under the 63 characters a
+# label allows, leaving room for the suffix that tells two worktrees apart. A
+# second dot would also put it out of reach of a one-level wildcard.
+site_name() {
+    local repo="$1" branch="$2" suffix="${3:-}" label
+    label="$(slug "$branch" | cut -c1-50 | sed 's/-$//')"
+    printf '%s%s.%s' "$label" "${suffix:+-$suffix}" "$(slug "$repo")"
+}
+
+# Point a worktree's .env at its own site. WorkOS only redirects back to a URI
+# it has on record, which for a worktree is the project's wildcard, so a
+# redirect URL written out in full (rather than built from ${APP_URL}) would
+# send every login back to the main clone. Its host follows the site's too.
+point_env_at() {
+    local file="$1" url="$2" redirect pattern='^https?://[^/]+(/.*)?$'
+    set_env_value "$file" APP_URL "$url"
+    redirect="$(env_value "$file" WORKOS_REDIRECT_URL)"
+    if [[ "$redirect" =~ $pattern ]]; then
+        set_env_value "$file" WORKOS_REDIRECT_URL "$url${BASH_REMATCH[1]}"
+    fi
+}
+
+current_branch() {
+    local branch
+    branch="$(git -C "$1" rev-parse --abbrev-ref HEAD 2>/dev/null)"
+    printf '%s' "${branch##*/}"
+}
+
+# T3 names the branch from the thread's first message, and it does that when
+# the first turn starts, which is right after it launches this script. Waiting
+# a moment for the name lets the site and database be named after the work from
+# the start. If the name never comes, the placeholder is used and the sweep
+# relinks the site once a real name appears.
+wait_for_branch() {
+    local dir="$1" waited=0
+    placeholder_branch "$(current_branch "$dir")" || return 0
+    log "waiting for T3 to name the branch"
+    while placeholder_branch "$(current_branch "$dir")" && (( waited < BRANCH_WAIT )); do
+        sleep 2
+        waited=$((waited + 2))
+    done
+    placeholder_branch "$(current_branch "$dir")" && log "branch still unnamed after ${BRANCH_WAIT}s: using the placeholder"
+    return 0
+}
 
 # Replace a key in a .env, appending it when the file does not carry it yet. A
 # project that leans on a framework default has no line to rewrite, and leaving
@@ -243,7 +295,7 @@ provision() {
     # branch on every run would move the URL out from under an open browser tab
     # and abandon the database you had been testing against. The one name that
     # is allowed to change is a site first linked under a placeholder branch,
-    # and --sweep relinks that once a real branch name appears.
+    # and the sweep relinks that once a real branch name appears.
     site=""; site_branch=""
     if [[ -f "$state" ]]; then
         site="$(env_value "$state" SITE)"
@@ -259,13 +311,13 @@ provision() {
     fi
 
     if [[ -z "$site" ]]; then
-        site="$(slug "$repo-$branch")"
+        site="$(site_name "$repo" "$branch")"
         site_branch="$branch"
 
         # Reuse an existing link only when it already points at this worktree.
         owner="$(herd_links | awk -F'\t' -v s="$site" '$1 == s {print $2}')"
         if [[ -n "$owner" && "$owner" != "$dir" ]]; then
-            site="$site-$(printf '%s' "$dir" | shasum | cut -c1-6)"
+            site="$(site_name "$repo" "$branch" "$(printf '%s' "$dir" | shasum | cut -c1-6)")"
         fi
     fi
 
@@ -324,11 +376,15 @@ provision() {
 
     [[ -f "$dir/.env" ]] || cp "$main/.env" "$dir/.env"
     # Rewritten every run: the branch, and so the host and database, can change.
-    set_env_value "$dir/.env" APP_URL "$url"
+    point_env_at "$dir/.env" "$url"
     [[ -n "$db" ]] && set_env_value "$dir/.env" DB_DATABASE "$db"
 
+    log "installing composer dependencies"
     ( cd "$dir" && composer install --no-interaction --quiet ) >>"$LOG" 2>&1
-    [[ -f "$dir/package.json" ]] && ( cd "$dir" && { npm ci --silent || npm install --silent; } ) >>"$LOG" 2>&1
+    if [[ -f "$dir/package.json" ]]; then
+        log "installing npm dependencies"
+        ( cd "$dir" && { npm ci --silent || npm install --silent; } ) >>"$LOG" 2>&1
+    fi
 
     if [[ -n "$db" ]]; then
         [[ "$connection" == sqlite ]] || mysql_run "$db_host" "$db_port" -e "CREATE DATABASE IF NOT EXISTS \`$db\`" >>"$LOG" 2>&1
@@ -340,12 +396,14 @@ provision() {
     fi
 
     artisan_if_available "$dir" wayfinder:generate --with-form
+    log "building assets"
     npm_run_if_available "$dir" build
 
     # `herd link` runs a Boost hook that rewrites bundled skill files. Revert
     # only what it touched under .claude/, so the branch diff stays clean.
     local before after
     before="$(git -C "$dir" status --porcelain -- .claude 2>/dev/null)"
+    log "linking $site.test with Herd"
     ( cd "$dir" && "$HERD" link "$site" && "$HERD" secure "$site" ) >>"$LOG" 2>&1
     after="$(git -C "$dir" status --porcelain -- .claude 2>/dev/null)"
     if [[ "$before" != "$after" ]]; then
@@ -359,15 +417,10 @@ provision() {
 
     if curl -sk -o /dev/null -w '%{http_code}' "$url" | grep -qE '^(200|30[0-9])$'; then
         /usr/bin/sed -i '' 's/^STATUS=.*/STATUS=ready/' "$state"
-        set_env_value "$state" FAILED_AT ""
         log "ready $url"
         notify "Worktree site ready" "$site.test"
     else
         /usr/bin/sed -i '' 's/^STATUS=.*/STATUS=failed/' "$state"
-        # Stamped so the sweep can back off. Without this a worktree that keeps
-        # failing reinstalls its dependencies and rebuilds its assets every
-        # single time the sweep comes round.
-        set_env_value "$state" FAILED_AT "$(date +%s)"
         log "FAILED $url - see $LOG"
         notify "Worktree site failed" "$site.test - see provision.log"
     fi
@@ -521,14 +574,14 @@ relink_site() {
     [[ -n "$main" ]] || return 0
     repo="$(basename "$main")"; repo="${repo%%.*}"
 
-    site="$(slug "$repo-$branch")"
+    site="$(site_name "$repo" "$branch")"
     [[ -n "$site" && "$site" != "$old_site" ]] || return 0
 
     url="https://$site.test"
     ( cd "$dir" && "$HERD" link "$site" && "$HERD" secure "$site" ) >>"$LOG" 2>&1 || return 0
     [[ -n "$old_site" ]] && "$HERD" unlink "$old_site" >>"$LOG" 2>&1
 
-    [[ -f "$dir/.env" ]] && set_env_value "$dir/.env" APP_URL "$url"
+    [[ -f "$dir/.env" ]] && point_env_at "$dir/.env" "$url"
     ( cd "$dir" && php artisan config:clear ) >>"$LOG" 2>&1
     # set_env_value rather than sed: legacy state has no SITE_BRANCH or MAIN line
     # to substitute, and a missing key has to be added rather than skipped.
@@ -581,29 +634,21 @@ for key in ("worktree_path", "worktreePath", "worktree", "path", "cwd"):
 }
 
 case "${1:-}" in
-    --hook)
-        target="$(hook_path)"
-        [[ -n "$target" ]] || target="$PWD"
-        # The sweep runs from any session, not just one inside a worktree, so
-        # settling a thread is enough to get it cleaned up next time you start
-        # Claude anywhere.
-        nohup "$0" --sweep "$target" >/dev/null 2>&1 &
-        exit 0
-        ;;
-    --sweep)
-        target="$2"
-        reap "$target"
-        prune
-        qualifies "$target" || exit 0
-        state="$(state_file "$target")"
-        if [[ -f "$state" ]]; then
-            # The site and database names no longer follow the branch, so a
-            # rename is not a reason to build anything again. Only a run that
-            # did not finish is.
-            relink_site "$target"
-            [[ "$(env_value "$state" STATUS)" == "failed" ]] || exit 0
+    --setup)
+        # T3 runs this in a terminal inside the worktree it just created, as the
+        # project script marked to run on worktree creation. It has to stay
+        # async in T3: the branch is only named once the agent's first turn
+        # starts, and holding the agent back would leave nothing to wait for.
+        target="${T3CODE_WORKTREE_PATH:-$PWD}"
+        ECHO_LOG=1
+        if ! qualifies "$target"; then
+            echo "Not a Laravel worktree under $WORKTREE_ROOT: nothing to set up."
+            exit 0
         fi
+        wait_for_branch "$target"
         provision "$target"
+        state="$(state_file "$target")"
+        [[ "$(env_value "$state" STATUS)" == "ready" ]] || { echo "Setup failed, see $LOG"; exit 1; }
         ;;
     --hook-end)
         target="$(hook_path)"
@@ -662,10 +707,9 @@ case "${1:-}" in
         esac
         ;;
     --sweep-all)
-        # T3 gives Codex and Gemini threads worktrees too, and those runtimes
-        # never read the Claude hooks, so nothing tells this script about them.
-        # Walking every worktree instead of waiting to be told is what makes the
-        # whole thing work regardless of which agent a thread runs on.
+        # T3 provisions through --setup, but it has no hook for a worktree going
+        # away, and Codex and Gemini threads never read the Claude hooks. Walking
+        # every worktree is what gets them all reaped whatever agent they ran on.
         cd / || exit 0
         lock="$STATE_DIR/sweep-all.lock"
         mkdir "$lock" 2>/dev/null || exit 0
@@ -676,16 +720,7 @@ case "${1:-}" in
         for target in "$WORKTREE_ROOT"/*/*; do
             [[ -d "$target" ]] || continue
             qualifies "$target" || continue
-            state="$(state_file "$target")"
-            if [[ -f "$state" ]]; then
-                relink_site "$target"
-                [[ "$(env_value "$state" STATUS)" == "failed" ]] || continue
-                failed_at="$(env_value "$state" FAILED_AT)"
-                if [[ -n "$failed_at" ]] && (( $(date +%s) - failed_at < RETRY_AFTER )); then
-                    continue
-                fi
-            fi
-            provision "$target"
+            relink_site "$target"
         done
         ;;
     --reap)
@@ -708,8 +743,14 @@ case "${1:-}" in
         echo "unlinked $site"
         [[ -n "$db" ]] && echo "database $db kept"
         ;;
-    *)
+    "")
         prune
         provision "$PWD"
+        ;;
+    *)
+        # A session started before --hook was retired still calls it, and
+        # falling through to a provision of whatever its cwd is would be wrong.
+        echo "unknown option: $1" >&2
+        exit 1
         ;;
 esac

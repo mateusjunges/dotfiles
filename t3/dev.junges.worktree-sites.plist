@@ -12,8 +12,8 @@
 		<string>"$HOME/.dotfiles/t3/worktree-site.sh" --sweep-all</string>
 	</array>
 
-	<!-- launchd starts with a bare PATH, and php, composer, npm and herd all
-	     live outside it. Without this the sweep silently provisions nothing. -->
+	<!-- launchd starts with a bare PATH, and php, mysql and herd all
+	     live outside it. Without this the sweep silently reaps nothing. -->
 	<key>EnvironmentVariables</key>
 	<dict>
 		<key>PATH</key>

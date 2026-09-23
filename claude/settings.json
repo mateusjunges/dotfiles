@@ -60,26 +60,8 @@
         "hooks": [
           {
             "type": "command",
-            "command": "\"$HOME/.dotfiles/t3/worktree-site.sh\" --hook",
-            "timeout": 15,
-            "async": true
-          },
-          {
-            "type": "command",
             "command": "\"$HOME/.dotfiles/t3/worktree-site.sh\" --context",
             "timeout": 5
-          }
-        ]
-      }
-    ],
-    "WorktreeCreate": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "\"$HOME/.dotfiles/t3/worktree-site.sh\" --hook",
-            "timeout": 15,
-            "async": true
           }
         ]
       }

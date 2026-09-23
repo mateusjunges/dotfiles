@@ -67,9 +67,27 @@ if [ -d "$DOTFILES_DIR/claude" ]; then
     rm -rf ~/.claude/agents
     ln -sf "$DOTFILES_DIR/claude/agents" ~/.claude/agents
 
-    # Worktree site provisioning: the sweeper runs for every T3 agent runtime,
-    # so it lives outside claude/ and is driven by launchd rather than hooks
-    # alone. The hooks in settings.json call it by its dotfiles path.
+    # Worktree sites: T3 provisions each new worktree through its setup script,
+    # registered below as a default for every project, and a launchd sweeper
+    # reaps them for every T3 agent runtime. The hooks in settings.json call the
+    # script by its dotfiles path.
+    /usr/bin/python3 - "$HOME/.t3/userdata/settings.json" <<'PY'
+import json, os, sys
+path = sys.argv[1]
+settings = json.load(open(path)) if os.path.exists(path) else {}
+scripts = [s for s in settings.get("defaultProjectScripts", []) if s.get("id") != "setup-worktree"]
+scripts.append({
+    "id": "setup-worktree",
+    "name": "Setup worktree",
+    "command": '"$HOME/.dotfiles/t3/worktree-site.sh" --setup',
+    "icon": "configure",
+    "runOnWorktreeCreate": True,
+    "async": True,
+})
+settings["defaultProjectScripts"] = scripts
+os.makedirs(os.path.dirname(path), exist_ok=True)
+json.dump(settings, open(path, "w"), indent=2)
+PY
     mkdir -p ~/Library/LaunchAgents
     ln -sf "$DOTFILES_DIR/t3/dev.junges.worktree-sites.plist" ~/Library/LaunchAgents/dev.junges.worktree-sites.plist
     launchctl bootout "gui/$(id -u)/dev.junges.worktree-sites" 2>/dev/null || true
