@@ -8,6 +8,7 @@ brew 'php@8.4'
 brew 'php@8.5'
 brew 'imagemagick'
 brew 'wget'
+brew 'curl'
 brew 'libpq'
 
 # Mobile development
