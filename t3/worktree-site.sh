@@ -17,11 +17,13 @@
 #   worktree-site.sh --reap -n    print what --reap would tear down, changing nothing
 #
 # A worktree's database starts from storage/database/copy.dump when the project
-# keeps one, and from a fresh migration with seeders when it does not.
+# keeps one, and from a fresh migration with seeders when it does not. With a
+# dump, every run drops the database and imports it again.
 #
 # Sites are named <branch>.<repo>.test, a subdomain of the project, so one
 # wildcard redirect URI (https://*.<repo>.test/authenticate in WorkOS) covers
-# every worktree of it.
+# every worktree of it. Provisioning renames the site after the current branch,
+# and the database too when there is a dump to fill the new one from.
 #
 set -uo pipefail
 
@@ -88,6 +90,28 @@ site_name() {
     local repo="$1" branch="$2" suffix="${3:-}" label
     label="$(slug "$branch" | cut -c1-50 | sed 's/-$//')"
     printf '%s%s.%s' "$label" "${suffix:+-$suffix}" "$(slug "$repo")"
+}
+
+# The site for a branch, unless another directory already has that name, in
+# which case a suffix from this worktree's path keeps the two apart.
+pick_site_name() {
+    local repo="$1" branch="$2" dir="$3" site owner
+    site="$(site_name "$repo" "$branch")"
+    owner="$(herd_links | awk -F'\t' -v s="$site" '$1 == s {print $2}')"
+    [[ -z "$owner" || "$owner" == "$dir" ]] || site="$(site_name "$repo" "$branch" "$(printf '%s' "$dir" | shasum | cut -c1-6)")"
+    printf '%s' "$site"
+}
+
+# Whether another worktree already has this database. A worktree keeps its
+# database name when there is no dump to rebuild it from, so an old branch name
+# can still be in use after that branch was renamed away.
+database_claimed() {
+    local db="$1" dir="$2" f
+    for f in "$STATE_DIR"/*.env; do
+        [[ -f "$f" && "$(env_value "$f" PATH_)" != "$dir" ]] || continue
+        [[ "$(env_value "$f" DB)" == "$db" ]] && return 0
+    done
+    return 1
 }
 
 # Point a worktree's .env at its own site. WorkOS only redirects back to a URI
@@ -186,10 +210,8 @@ seed_database() {
     esac
 }
 
-# Provisioning re-runs after a failure, and a failure late in the run (the site
-# not answering, say) leaves a database that is already loaded. Filling it again
-# would throw away whatever you had been testing against, so only an empty one
-# is ever filled.
+# Without a dump there is nothing to restore a database from, so one that
+# already has content is kept rather than migrated fresh over.
 database_is_empty() {
     local connection="$1" db="$2" host="$3" port="$4" count
     if [[ "$connection" == sqlite ]]; then
@@ -201,6 +223,24 @@ database_is_empty() {
     [[ "${count:-0}" -eq 0 ]]
 }
 
+# Clear a database so the dump can be imported into it again. Only a database
+# in this script's per-branch naming scheme is dropped, never the main clone's
+# or one adopted from a worktree .env under some other name. On sqlite it is a
+# file inside the worktree, so removing it is always safe.
+reset_database() {
+    local connection="$1" db="$2" main="$3" host="$4" port="$5"
+    if [[ "$connection" == sqlite ]]; then
+        rm -f "$db"
+        return 0
+    fi
+    if ! droppable_database "$db" "$main"; then
+        log "database $db is outside the per-branch naming scheme: not dropping it"
+        return 1
+    fi
+    log "dropping database $db to import the dump again"
+    mysql_run "$host" "$port" -e "DROP DATABASE IF EXISTS \`$db\`" >>"$LOG" 2>&1
+}
+
 migrate_fresh() { ( cd "$1" && php artisan migrate:fresh --seed --force ) >>"$LOG" 2>&1; }
 
 # A dump names the database it was taken from. TablePlus writes a `use` line and
@@ -208,6 +248,12 @@ migrate_fresh() { ( cd "$1" && php artisan migrate:fresh --seed --force ) >>"$LO
 # statements point the import at that database instead of this branch's one and
 # overwrite it, so they are stripped and the import can only land where we mean
 # it to.
+#
+# A dump taken from a server with GTIDs on (Laravel Cloud's are) also sets
+# GTID_PURGED to that server's history. The first import records it locally,
+# and every later one fails on its very first statement because that history
+# is already there. It says nothing about the data, so it goes too, including
+# the form mysqldump spreads over several lines when there are many sources.
 import_mysql_dump() {
     local dir="$1" dump="$2" db="$3" host="$4" port="$5" reader
 
@@ -222,7 +268,9 @@ import_mysql_dump() {
 
     log "importing $dump into $db"
     if "$reader" "$dump" \
-        | /usr/bin/sed -E '/^[[:space:]]*(USE|CREATE DATABASE|DROP DATABASE)[[:space:]]/I d' \
+        | /usr/bin/sed -E -e '/^[[:space:]]*(USE|CREATE DATABASE|DROP DATABASE)[[:space:]]/I d' \
+            -e '/^[[:space:]]*SET @@GLOBAL\.GTID_PURGED.*;[[:space:]]*$/I d' \
+            -e '/^[[:space:]]*SET @@GLOBAL\.GTID_PURGED/I,/;[[:space:]]*$/ d' \
         | mysql_run "$host" "$port" "$db" 2>>"$LOG"
     then
         ( cd "$dir" && php artisan migrate --force ) >>"$LOG" 2>&1
@@ -272,8 +320,8 @@ import_sqlite_dump() {
 }
 
 provision() {
-    local dir="$1" lock state main branch repo site site_branch url owner
-    local connection db base_db db_host db_port
+    local dir="$1" lock state main branch repo site site_branch url old_site=""
+    local connection db base_db db_host db_port wanted_db old_db=""
     state="$(state_file "$dir")"
     lock="$STATE_DIR/$(digest "$dir").lock"
 
@@ -290,12 +338,11 @@ provision() {
 
     repo="$(basename "$main")"; repo="${repo%%.*}"
 
-    # The site and the database keep the names they were first given. T3 renames
-    # a thread's branch as the work shifts, and rebuilding these names from the
-    # branch on every run would move the URL out from under an open browser tab
-    # and abandon the database you had been testing against. The one name that
-    # is allowed to change is a site first linked under a placeholder branch,
-    # and the sweep relinks that once a real branch name appears.
+    # Names follow the current branch. This only runs when T3 creates the
+    # worktree or when you run the setup script yourself, so a rename (the agent
+    # renaming the branch, say) is picked up when you ask for it and never moves
+    # the URL out from under an open tab in between. The sweep only relinks a
+    # site first linked under a placeholder branch.
     site=""; site_branch=""
     if [[ -f "$state" ]]; then
         site="$(env_value "$state" SITE)"
@@ -311,13 +358,16 @@ provision() {
     fi
 
     if [[ -z "$site" ]]; then
-        site="$(site_name "$repo" "$branch")"
+        site="$(pick_site_name "$repo" "$branch" "$dir")"
         site_branch="$branch"
-
-        # Reuse an existing link only when it already points at this worktree.
-        owner="$(herd_links | awk -F'\t' -v s="$site" '$1 == s {print $2}')"
-        if [[ -n "$owner" && "$owner" != "$dir" ]]; then
-            site="$(site_name "$repo" "$branch" "$(printf '%s' "$dir" | shasum | cut -c1-6)")"
+    elif ! placeholder_branch "$branch"; then
+        old_site="$site"
+        site="$(pick_site_name "$repo" "$branch" "$dir")"
+        site_branch="$branch"
+        if [[ "$site" == "$old_site" ]]; then
+            old_site=""
+        else
+            log "renaming $old_site.test to $site.test to follow the branch"
         fi
     fi
 
@@ -349,7 +399,22 @@ provision() {
                 [[ "$db" != "$base_db" ]] || db=""
             fi
 
-            [[ -n "$db" ]] || db="$(printf '%s_%s' "$base_db" "$(slug "$branch" | tr '-' '_')" | cut -c1-64)"
+            # A database named after an older branch moves to the current one
+            # only when the dump can fill the new one. MySQL cannot rename a
+            # database, and without a dump the data would have to be copied
+            # across, so it keeps its name. The old one is dropped once the new
+            # one is filled, and only if it is one of this script's own.
+            wanted_db="$(printf '%s_%s' "$base_db" "$(slug "$branch" | tr '-' '_')" | cut -c1-64)"
+            if [[ -z "$db" ]]; then
+                db="$wanted_db"
+            elif [[ "$db" != "$wanted_db" ]] && ! placeholder_branch "$branch" \
+                && find_dump "$dir" "$main" >/dev/null \
+                && droppable_database "$db" "$main" \
+                && ! database_claimed "$wanted_db" "$dir"; then
+                old_db="$db"
+                db="$wanted_db"
+                log "moving database $old_db to $db to follow the branch"
+            fi
             ;;
         sqlite)
             # Absolute, so a main clone pointing at its own file cannot make the
@@ -387,11 +452,18 @@ provision() {
     fi
 
     if [[ -n "$db" ]]; then
+        if find_dump "$dir" "$main" >/dev/null && ! database_is_empty "$connection" "$db" "$db_host" "$db_port"; then
+            reset_database "$connection" "$db" "$main" "$db_host" "$db_port"
+        fi
         [[ "$connection" == sqlite ]] || mysql_run "$db_host" "$db_port" -e "CREATE DATABASE IF NOT EXISTS \`$db\`" >>"$LOG" 2>&1
         if database_is_empty "$connection" "$db" "$db_host" "$db_port"; then
             seed_database "$dir" "$main" "$connection" "$db" "$db_host" "$db_port"
         else
             log "database $db already has content: leaving it alone"
+        fi
+        if [[ -n "$old_db" ]]; then
+            mysql_run "$db_host" "$db_port" -e "DROP DATABASE IF EXISTS \`$old_db\`" >>"$LOG" 2>&1
+            log "dropped database $old_db"
         fi
     fi
 
@@ -404,7 +476,10 @@ provision() {
     local before after
     before="$(git -C "$dir" status --porcelain -- .claude 2>/dev/null)"
     log "linking $site.test with Herd"
-    ( cd "$dir" && "$HERD" link "$site" && "$HERD" secure "$site" ) >>"$LOG" 2>&1
+    if ( cd "$dir" && "$HERD" link "$site" && "$HERD" secure "$site" ) >>"$LOG" 2>&1 && [[ -n "$old_site" ]]; then
+        "$HERD" unlink "$old_site" >>"$LOG" 2>&1
+        log "unlinked $old_site.test"
+    fi
     after="$(git -C "$dir" status --porcelain -- .claude 2>/dev/null)"
     if [[ "$before" != "$after" ]]; then
         comm -13 <(printf '%s\n' "$before" | sort) <(printf '%s\n' "$after" | sort) \
@@ -574,7 +649,7 @@ relink_site() {
     [[ -n "$main" ]] || return 0
     repo="$(basename "$main")"; repo="${repo%%.*}"
 
-    site="$(site_name "$repo" "$branch")"
+    site="$(pick_site_name "$repo" "$branch" "$dir")"
     [[ -n "$site" && "$site" != "$old_site" ]] || return 0
 
     url="https://$site.test"
