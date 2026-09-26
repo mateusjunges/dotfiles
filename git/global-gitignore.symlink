@@ -143,3 +143,6 @@ ray.php # Ignore Spatie ray configuration file
 
 .project-helpers
 **/.claude/settings.local.json
+
+# Per-project Laravel Cloud token (see bin/cloud)
+.env.cloud
