@@ -59,9 +59,17 @@ if [ -d "$DOTFILES_DIR/claude" ]; then
     ln -sf "$DOTFILES_DIR/claude/settings.json" ~/.claude/settings.json
     ln -sf "$DOTFILES_DIR/claude/statusline.sh" ~/.claude/statusline.sh
 
-    # Symlink entire skills directory
-    rm -rf ~/.claude/skills
-    ln -sf "$DOTFILES_DIR/claude/skills" ~/.claude/skills
+    # Symlink each skill into a real skills directory, so skills installed by
+    # other tools (ui.sh, the Claude app sync) stay out of the repo. Links left
+    # behind by skills removed from the repo are pruned.
+    [ -L ~/.claude/skills ] && rm ~/.claude/skills
+    mkdir -p ~/.claude/skills
+    for link in ~/.claude/skills/*; do
+        [ -L "$link" ] && [ ! -e "$link" ] && rm "$link"
+    done
+    for skill in "$DOTFILES_DIR"/claude/skills/*/; do
+        ln -sfn "${skill%/}" ~/.claude/skills/"$(basename "$skill")"
+    done
 
     # Symlink entire agents directory
     rm -rf ~/.claude/agents
