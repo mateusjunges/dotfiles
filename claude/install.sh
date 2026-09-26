@@ -59,10 +59,6 @@ if [ -d "$DOTFILES_DIR/claude" ]; then
     ln -sf "$DOTFILES_DIR/claude/settings.json" ~/.claude/settings.json
     ln -sf "$DOTFILES_DIR/claude/statusline.sh" ~/.claude/statusline.sh
 
-    # Symlink entire skills directory
-    rm -rf ~/.claude/skills
-    ln -sf "$DOTFILES_DIR/claude/skills" ~/.claude/skills
-
     # Symlink entire agents directory
     rm -rf ~/.claude/agents
     ln -sf "$DOTFILES_DIR/claude/agents" ~/.claude/agents

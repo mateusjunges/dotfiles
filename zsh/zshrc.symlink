@@ -122,3 +122,6 @@ export HERD_PHP_85_INI_SCAN_DIR="/Users/mateusjunges/Library/Application Support
 export PATH="/opt/homebrew/opt/libpq/bin:$PATH"
 
 export PATH="$HOME/.local/bin:$PATH"
+
+# Herd injected PHP 8.6 configuration.
+export HERD_PHP_86_INI_SCAN_DIR="/Users/mateusjunges/Library/Application Support/Herd/config/php/86"
