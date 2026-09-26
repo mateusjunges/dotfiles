@@ -7,7 +7,7 @@ argument-hint: '<file> [<file>...]'
 Upload files with the bundled script:
 
 ```bash
-~/.claude/skills/file-upload/upload.sh [--prefix <dir>] <file> [<file>...]
+~/.dotfiles/skills/file-upload/upload.sh [--prefix <dir>] <file> [<file>...]
 ```
 
 Each successful upload prints one tab-separated line: the local path, the public URL, and a markdown snippet. Images get `![name](url)`, everything else gets a `[name](url)` link. The script exits non-zero if any file failed, so read stderr and report failures instead of pasting broken links.
