@@ -26,17 +26,3 @@ GitHub does not render `<video>` tags pointing at external hosts, so videos can 
 ## Things to keep in mind
 
 Uploaded files are public to anyone with the URL. The random segment makes them unguessable, but never upload secrets, credentials, `.env` files, or screenshots showing customer data or tokens. If a screenshot might contain sensitive information, check it before uploading.
-
-## Setup
-
-The script reads these variables from the environment, falling back to `~/.config/file-upload/config` (plain `KEY=value` lines, kept outside the dotfiles repo):
-
-```bash
-R2_ACCOUNT_ID=...          # Cloudflare account ID
-R2_ACCESS_KEY_ID=...       # R2 API token access key (Object Read & Write, scoped to the bucket)
-R2_SECRET_ACCESS_KEY=...
-R2_BUCKET=...
-R2_PUBLIC_URL=https://...  # custom domain or r2.dev URL serving the bucket publicly
-```
-
-If a variable is missing the script says which one. Tell the user rather than trying to create credentials yourself.
