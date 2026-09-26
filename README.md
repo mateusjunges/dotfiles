@@ -1,5 +1,5 @@
 # My personal dotfiles
-![Readme banner](/art/readme-screenshot.png)
+![Readme banner](/art/readme-banner.jpg)
 
 Your dotfiles are how you personalize your system. These are mine.
 
