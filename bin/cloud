@@ -1,0 +1,65 @@
+#!/usr/bin/env bash
+#
+# Run the Laravel Cloud CLI with the API token for the current project.
+#
+# Projects use the token saved in ~/.config/cloud/config.json by default. A
+# project on another account overrides it with a .env.cloud in its root that
+# sets LARAVEL_CLOUD_TOKEN. The file is looked up from the working directory
+# upwards, then in the main checkout, so worktrees share the file of the clone
+# they came from. An exported LARAVEL_CLOUD_TOKEN wins over both.
+
+set -euo pipefail
+
+self_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+real_cloud=""
+IFS=: read -ra path_dirs <<< "$PATH"
+for dir in "${path_dirs[@]}"; do
+    [ -n "$dir" ] || continue
+    [ "$(cd "$dir" 2>/dev/null && pwd)" = "$self_dir" ] && continue
+    if [ -x "$dir/cloud" ]; then
+        real_cloud="$dir/cloud"
+        break
+    fi
+done
+
+if [ -z "$real_cloud" ]; then
+    echo "cloud: Laravel Cloud CLI not found. Run: composer global require laravel/cloud-cli" >&2
+    exit 127
+fi
+
+find_env_file() {
+    local dir="$PWD"
+
+    while :; do
+        [ -e "$dir/.env.cloud" ] && { echo "$dir/.env.cloud"; return; }
+        [ "$dir" = / ] && break
+        dir="$(dirname "$dir")"
+    done
+
+    local common_dir
+    common_dir="$(git rev-parse --path-format=absolute --git-common-dir 2>/dev/null)" || return 0
+    [ -e "$(dirname "$common_dir")/.env.cloud" ] && echo "$(dirname "$common_dir")/.env.cloud"
+    return 0
+}
+
+if [ -z "${LARAVEL_CLOUD_TOKEN:-}" ]; then
+    env_file="$(find_env_file)"
+
+    if [ -n "$env_file" ]; then
+        line="$(grep -m1 -E '^[[:space:]]*(export[[:space:]]+)?LARAVEL_CLOUD_TOKEN=' "$env_file" || true)"
+        token="${line#*=}"
+        token="${token%\"}"; token="${token#\"}"
+        token="${token%\'}"; token="${token#\'}"
+
+        # Falling back to the default token would act on the wrong account.
+        if [ -z "$token" ]; then
+            echo "cloud: $env_file exists but sets no LARAVEL_CLOUD_TOKEN." >&2
+            exit 1
+        fi
+
+        export LARAVEL_CLOUD_TOKEN="$token"
+    fi
+fi
+
+exec "$real_cloud" "$@"
