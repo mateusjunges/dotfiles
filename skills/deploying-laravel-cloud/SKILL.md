@@ -11,6 +11,13 @@ composer global require laravel/cloud-cli
 cloud auth -n
 ```
 
+## Accounts
+
+The user has more than one Laravel Cloud account. Projects use the default account, whose token is saved in `~/.config/cloud/config.json`. A project on another account has a `.env.cloud` in its root setting `LARAVEL_CLOUD_TOKEN`, which the `cloud` command on PATH loads before running the real CLI. Worktrees use the file of their main checkout.
+
+- Never read, print, or echo `.env.cloud`, `LARAVEL_CLOUD_TOKEN`, or the saved tokens.
+- Never run `cloud auth` or `cloud auth:token --add` without asking. A second saved token makes every project without a `.env.cloud` fail with "Multiple API tokens found".
+
 ## Commands
 
 Commands follow a CRUD pattern: `resource:list`, `resource:get`, `resource:create`, `resource:update`, `resource:delete`.
@@ -61,7 +68,7 @@ Not sure what the user needs? → ask them before running anything.
 
 1. Read the error output
 2. Check resource status with `:list --json -n` or `:get --json -n`
-3. Auth error? → `cloud auth -n`
+3. Auth error? → the token is probably expired or revoked. Stop and ask the user for a new one
 4. Fix the issue, re-run the command
 5. If the same error repeats after one fix, stop and ask the user
 
@@ -157,7 +164,7 @@ Delegate `--detailed --json` to a subagent — the payload includes every databa
 
 ## Config
 
-1. Global: `~/.config/cloud/config.json` — auth tokens and preferences
+1. Global: `~/.config/cloud/config.json` — auth tokens and preferences (ignored when `LARAVEL_CLOUD_TOKEN` is set by `.env.cloud`)
 2. Repo-local: `.cloud/config.json` — app and environment defaults (set by `cloud repo:config`)
 3. CLI arguments override both
 
