@@ -8,15 +8,17 @@ description: "Deploys and manages Laravel applications on Laravel Cloud using th
 
 ```sh
 composer global require laravel/cloud-cli
-cloud auth -n
 ```
+
+Authentication is already set up (see Accounts). Only run `cloud auth -n` when `jq '.api_tokens | length' ~/.config/cloud/config.json` prints 0 and the project has no `.env.cloud`.
 
 ## Accounts
 
 The user has more than one Laravel Cloud account. Projects use the default account, whose token is saved in `~/.config/cloud/config.json`. A project on another account has a `.env.cloud` in its root setting `LARAVEL_CLOUD_TOKEN`, which the `cloud` command on PATH loads before running the real CLI. Worktrees use the file of their main checkout.
 
-- Never read, print, or echo `.env.cloud`, `LARAVEL_CLOUD_TOKEN`, or the saved tokens.
+- Never read, print, or echo `.env.cloud`, `LARAVEL_CLOUD_TOKEN`, or the saved tokens. `cloud auth:token --list` prints tokens in full, so do not run it.
 - Never run `cloud auth` or `cloud auth:token --add` without asking. A second saved token makes every project without a `.env.cloud` fail with "Multiple API tokens found".
+- Moving a project to the other account means asking the user to create `.env.cloud` in the main clone with `LARAVEL_CLOUD_TOKEN=<token>` and `chmod 600`. Never write the token yourself.
 
 ## Commands
 
