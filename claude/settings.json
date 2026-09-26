@@ -51,9 +51,9 @@
       "mcp__laravel-boost__*",
       "mcp__chrome-devtools__*"
     ],
-    "defaultMode": "acceptEdits"
+    "defaultMode": "auto"
   },
-  "model": "fable[1m]",
+  "model": "opus",
   "hooks": {
     "SessionStart": [
       {

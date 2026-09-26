@@ -1,2 +1,3 @@
 .idea
 git/gitconfig.local.symlink
+nginx.pid
