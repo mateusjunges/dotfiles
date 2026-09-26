@@ -59,9 +59,19 @@ if [ -d "$DOTFILES_DIR/claude" ]; then
     ln -sf "$DOTFILES_DIR/claude/settings.json" ~/.claude/settings.json
     ln -sf "$DOTFILES_DIR/claude/statusline.sh" ~/.claude/statusline.sh
 
-    # Symlink entire skills directory
-    rm -rf ~/.claude/skills
-    ln -sf "$DOTFILES_DIR/claude/skills" ~/.claude/skills
+    # Symlink each skill into the Claude and Codex skills directories, so
+    # skills installed by other tools (ui.sh, the Claude app sync) stay out of
+    # the repo. Links left behind by skills removed from the repo are pruned.
+    for skills_dir in ~/.claude/skills ~/.agents/skills; do
+        [ -L "$skills_dir" ] && rm "$skills_dir"
+        mkdir -p "$skills_dir"
+        for link in "$skills_dir"/*; do
+            [ -L "$link" ] && [ ! -e "$link" ] && rm "$link"
+        done
+        for skill in "$DOTFILES_DIR"/claude/skills/*/; do
+            ln -sfn "${skill%/}" "$skills_dir/$(basename "$skill")"
+        done
+    done
 
     # Symlink entire agents directory
     rm -rf ~/.claude/agents
