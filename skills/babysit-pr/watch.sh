@@ -15,14 +15,17 @@
 # not running are reported as soon as it starts again. With --alive the script
 # only reports whether a watcher for the PR is running (exit 0) or not (exit 1).
 #
+# Agent harnesses kill background commands after a while (Claude Code does it
+# after 30 minutes), and an agent told a command was killed tends to give up
+# on it. So a quiet watcher exits on its own after BABYSIT_MAX_MINUTES
+# (default 25) and says to start it again. Nothing is lost between runs.
+#
 # BABYSIT_INTERVAL sets the poll interval in seconds (default 60).
-# BABYSIT_MAX_HOURS stops a quiet watcher after that many hours (default 12)
-# so an orphaned one does not poll forever.
 
 set -euo pipefail
 
 interval="${BABYSIT_INTERVAL:-60}"
-max_hours="${BABYSIT_MAX_HOURS:-12}"
+max_minutes="${BABYSIT_MAX_MINUTES:-25}"
 
 pr=""
 repo_args=()
@@ -170,7 +173,7 @@ if [[ "$(jq -r .state <<<"$prev")" != "OPEN" ]]; then
   exit 0
 fi
 
-deadline=$(( $(date +%s) + max_hours * 3600 ))
+deadline=$(( $(date +%s) + max_minutes * 60 ))
 
 while true; do
   if cur="$(snapshot)"; then
@@ -187,7 +190,7 @@ while true; do
 
   if [[ $(date +%s) -ge $deadline ]]; then
     echo "$url"
-    echo "no activity for ${max_hours}h, watcher stopped; start it again to keep watching"
+    echo "no new events in ${max_minutes} minutes. This is a normal exit, not a failure: start the watcher again to keep watching"
     exit 0
   fi
 
