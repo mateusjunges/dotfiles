@@ -13,6 +13,6 @@ PR titles usually become commit messages, so follow the repository title convent
 
 Check whether the repository has a PR template and if it does, follow it.
 
-Open the description with a simple explanation of the problem based on the user's original prompt, then briefly explain the solution. Do not lead with an implementation inventory.
+Open the description with a simple explanation of the problem based on the user's original prompt, then briefly explain the solution. Do not lead with an implementation inventory. Do not add meaningless walls of text.
 
 Open a real PR rather than a draft so review bots run.
