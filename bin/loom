@@ -1,0 +1,97 @@
+#!/usr/bin/env bash
+#
+# Downloads a Loom video as an mp4.
+#
+# Usage: loom [-o <file or directory>] <loom url or video id>
+#
+# Tries Loom's transcoded mp4 first. If the video has none, falls back to the
+# HLS stream and remuxes it with ffmpeg.
+#
+set -euo pipefail
+
+usage() {
+  echo "Usage: loom [-o <file or directory>] <loom url or video id>" >&2
+  exit 1
+}
+
+die() {
+  echo "loom: $*" >&2
+  exit 1
+}
+
+output=""
+while getopts ":o:h" opt; do
+  case "$opt" in
+    o) output="$OPTARG" ;;
+    *) usage ;;
+  esac
+done
+shift $((OPTIND - 1))
+[ $# -eq 1 ] || usage
+
+command -v jq >/dev/null || die "jq is required"
+
+# Accepts share/embed URLs (with or without query strings) or a bare id.
+id=$(printf '%s' "$1" | grep -oE '[0-9a-f]{32}' | head -n 1 || true)
+[ -n "$id" ] || die "could not find a video id in '$1'"
+
+ua="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0 Safari/537.36"
+api="https://www.loom.com/api/campaigns/sessions/$id"
+
+api_post() {
+  curl -fsS -X POST -A "$ua" -H 'Content-Type: application/json' -d '{}' "$api/$1"
+}
+
+# Build the file name from the page title, falling back to the id.
+title=$(curl -fsSL -A "$ua" "https://www.loom.com/share/$id" 2>/dev/null \
+  | grep -oE '<meta property="og:title" content="[^"]*"' \
+  | head -n 1 \
+  | sed -E 's/.*content="([^"]*)"/\1/' \
+  | sed -e 's/&amp;/\&/g' -e 's/&quot;/"/g' -e "s/&#x27;/'/g" -e "s/&#39;/'/g" -e 's/&lt;/</g' -e 's/&gt;/>/g' \
+  | tr '/:\\' '---' \
+  | sed -E 's/[[:space:]]+/ /g; s/^ //; s/ $//' \
+  || true)
+filename="${title:-$id}.mp4"
+
+if [ -z "$output" ]; then
+  dest="$PWD/$filename"
+elif [ -d "$output" ]; then
+  dest="${output%/}/$filename"
+else
+  dest="$output"
+fi
+
+echo "Downloading '${title:-$id}' to $dest"
+
+mp4_url=$(api_post transcoded-url 2>/dev/null | jq -r '.url // empty' || true)
+
+if [ -n "$mp4_url" ] && curl -fL -A "$ua" --progress-bar -o "$dest" "$mp4_url"; then
+  echo "Saved $dest"
+  exit 0
+fi
+
+echo "No transcoded mp4 available, falling back to the HLS stream" >&2
+command -v ffmpeg >/dev/null || die "ffmpeg is required for the HLS fallback"
+
+raw=$(api_post raw-url) || die "could not fetch stream info (is the video private or password protected?)"
+hls_url=$(jq -r '.url // empty' <<<"$raw")
+[ -n "$hls_url" ] || die "no stream url returned by Loom"
+
+# The playlist references segments by relative path, so the signed query
+# string is lost. Loom hands out the same signature as CloudFront cookies.
+host=$(printf '%s' "$hls_url" | sed -E 's#^https?://([^/]+).*#\1#')
+cookies=$(jq -r --arg host "$host" '
+  .part_credentials // {} |
+  to_entries |
+  map("CloudFront-\(.key)=\(.value); path=/; domain=\($host);") |
+  join("\n")
+' <<<"$raw")
+
+cookie_args=()
+[ -n "$cookies" ] && cookie_args=(-cookies "$cookies")
+
+ffmpeg -hide_banner -loglevel error -stats -y \
+  "${cookie_args[@]}" \
+  -i "$hls_url" -c copy -movflags +faststart "$dest"
+
+echo "Saved $dest"
